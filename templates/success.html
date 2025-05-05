@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row justify-content-center my-5">
+    <div class="col-md-8">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <div class="mb-4">
+                    <i class="fas fa-check-circle text-success fa-5x"></i>
+                </div>
+                <h2 class="card-title mb-4">제출 완료 | Submission Successful</h2>
+                <p class="lead">
+                    {% if submission_type == 'shopping' %}
+                    네이버 쇼핑 정보가 성공적으로 제출되었습니다.<br>
+                    Your Naver Shopping information has been successfully submitted.
+                    {% elif submission_type == 'place' %}
+                    네이버 플레이스 정보가 성공적으로 제출되었습니다.<br>
+                    Your Naver Place information has been successfully submitted.
+                    {% endif %}
+                </p>
+                
+                <div class="alert alert-info mt-4">
+                    <h4 class="alert-heading">제출된 정보 | Submitted Information</h4>
+                    <div class="text-start">
+                        {% if submission_type == 'shopping' %}
+                            <p><strong>제품명 | Product Name:</strong> {{ submission_data.product_name }}</p>
+                            <p><strong>가격 | Price:</strong> {{ submission_data.price }} KRW</p>
+                            <p><strong>카테고리 | Category:</strong> {{ submission_data.category }}</p>
+                            {% if submission_data.brand %}
+                                <p><strong>브랜드 | Brand:</strong> {{ submission_data.brand }}</p>
+                            {% endif %}
+                            <p><strong>제품 설명 | Description:</strong> {{ submission_data.description }}</p>
+                            {% if submission_data.features %}
+                                <p><strong>제품 특징 | Features:</strong> {{ submission_data.features }}</p>
+                            {% endif %}
+                            {% if submission_data.specifications %}
+                                <p><strong>제품 사양 | Specifications:</strong> {{ submission_data.specifications }}</p>
+                            {% endif %}
+                            {% if submission_data.shipping_info %}
+                                <p><strong>배송 정보 | Shipping Info:</strong> {{ submission_data.shipping_info }}</p>
+                            {% endif %}
+                        {% elif submission_type == 'place' %}
+                            <p><strong>장소명 | Place Name:</strong> {{ submission_data.place_name }}</p>
+                            <p><strong>카테고리 | Category:</strong> {{ submission_data.category }}</p>
+                            <p><strong>주소 | Address:</strong> {{ submission_data.address }}</p>
+                            {% if submission_data.phone %}
+                                <p><strong>전화번호 | Phone:</strong> {{ submission_data.phone }}</p>
+                            {% endif %}
+                            {% if submission_data.business_hours %}
+                                <p><strong>영업시간 | Business Hours:</strong> {{ submission_data.business_hours }}</p>
+                            {% endif %}
+                            {% if submission_data.description %}
+                                <p><strong>설명 | Description:</strong> {{ submission_data.description }}</p>
+                            {% endif %}
+                            {% if submission_data.website %}
+                                <p><strong>웹사이트 | Website:</strong> {{ submission_data.website }}</p>
+                            {% endif %}
+                            {% if submission_data.parking_info %}
+                                <p><strong>주차 정보 | Parking Info:</strong> {{ submission_data.parking_info }}</p>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-primary me-2">
+                        <i class="fas fa-home me-2"></i>홈으로 | Go Home
+                    </a>
+                    {% if submission_type == 'shopping' %}
+                    <a href="{{ url_for('shopping') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-plus me-2"></i>새 쇼핑 정보 입력 | New Shopping Entry
+                    </a>
+                    {% elif submission_type == 'place' %}
+                    <a href="{{ url_for('place') }}" class="btn btn-outline-success">
+                        <i class="fas fa-plus me-2"></i>새 플레이스 정보 입력 | New Place Entry
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

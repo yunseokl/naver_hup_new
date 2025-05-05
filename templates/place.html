@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="row justify-content-center my-4">
+    <div class="col-md-10">
+        <div class="card shadow">
+            <div class="card-header bg-success text-white">
+                <h2 class="mb-0">
+                    <i class="fas fa-map-marker-alt me-2"></i>네이버 플레이스 정보 입력 | Naver Place Data Entry
+                </h2>
+            </div>
+            <div class="card-body">
+                <p class="lead mb-4">네이버 플레이스에 등록하기 위한 정보를 입력해주세요.<br>
+                Please enter the information needed to register on Naver Place.</p>
+                
+                <form id="placeForm" action="{{ url_for('place') }}" method="post" novalidate>
+                    <div class="row g-3">
+                        <!-- Place Name -->
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="place_name" name="place_name" 
+                                       placeholder="장소명 | Place Name" required
+                                       value="{{ form_data.place_name if form_data else '' }}">
+                                <label for="place_name">장소명 | Place Name *</label>
+                                <div class="invalid-feedback">장소명을 입력해주세요. | Please enter a place name.</div>
+                            </div>
+                        </div>
+
+                        <!-- Category -->
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <select class="form-select" id="category" name="category" required>
+                                    <option value="" disabled selected>카테고리를 선택하세요 | Select a category</option>
+                                    <option value="음식점" {{ 'selected' if form_data and form_data.category == '음식점' else '' }}>음식점 | Restaurant</option>
+                                    <option value="카페" {{ 'selected' if form_data and form_data.category == '카페' else '' }}>카페 | Cafe</option>
+                                    <option value="쇼핑" {{ 'selected' if form_data and form_data.category == '쇼핑' else '' }}>쇼핑 | Shopping</option>
+                                    <option value="숙박" {{ 'selected' if form_data and form_data.category == '숙박' else '' }}>숙박 | Accommodation</option>
+                                    <option value="문화시설" {{ 'selected' if form_data and form_data.category == '문화시설' else '' }}>문화시설 | Cultural Facility</option>
+                                    <option value="병원" {{ 'selected' if form_data and form_data.category == '병원' else '' }}>병원 | Hospital</option>
+                                    <option value="미용" {{ 'selected' if form_data and form_data.category == '미용' else '' }}>미용 | Beauty</option>
+                                    <option value="학원/교육" {{ 'selected' if form_data and form_data.category == '학원/교육' else '' }}>학원/교육 | Academy/Education</option>
+                                    <option value="서비스/기타" {{ 'selected' if form_data and form_data.category == '서비스/기타' else '' }}>서비스/기타 | Service/Others</option>
+                                </select>
+                                <label for="category">카테고리 | Category *</label>
+                                <div class="invalid-feedback">카테고리를 선택해주세요. | Please select a category.</div>
+                            </div>
+                        </div>
+
+                        <!-- Address -->
+                        <div class="col-12">
+                            <div class="form-floating mb-3">
+                                <input type="text" class="form-control" id="address" name="address" 
+                                       placeholder="주소 | Address" required
+                                       value="{{ form_data.address if form_data else '' }}">
+                                <label for="address">주소 | Address *</label>
+                                <div class="invalid-feedback">주소를 입력해주세요. | Please enter an address.</div>
+                            </div>
+                        </div>
+
+                        <!-- Phone -->
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input type="tel" class="form-control" id="phone" name="phone" 
+                                       placeholder="전화번호 | Phone Number"
+                                       value="{{ form_data.phone if form_data else '' }}">
+                                <label for="phone">전화번호 | Phone Number</label>
+                                <small class="text-muted">예: 02-1234-5678 또는 010-1234-5678 | Example: 02-1234-5678 or 010-1234-5678</small>
+                            </div>
+                        </div>
+
+                        <!-- Business Hours -->
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <textarea class="form-control" id="business_hours" name="business_hours" 
+                                          style="height: 100px" placeholder="영업시간 | Business Hours">{{ form_data.business_hours if form_data else '' }}</textarea>
+                                <label for="business_hours">영업시간 | Business Hours</label>
+                                <small class="text-muted">예: 월-금 9:00-18:00, 주말 10:00-17:00 | Example: Mon-Fri 9:00-18:00, Weekend 10:00-17:00</small>
+                            </div>
+                        </div>
+
+                        <!-- Description -->
+                        <div class="col-12">
+                            <div class="form-floating mb-3">
+                                <textarea class="form-control" id="description" name="description" 
+                                          style="height: 120px" placeholder="설명 | Description">{{ form_data.description if form_data else '' }}</textarea>
+                                <label for="description">설명 | Description</label>
+                            </div>
+                        </div>
+
+                        <!-- Website -->
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <input type="url" class="form-control" id="website" name="website" 
+                                       placeholder="웹사이트 | Website"
+                                       value="{{ form_data.website if form_data else '' }}">
+                                <label for="website">웹사이트 | Website</label>
+                                <small class="text-muted">예: https://www.example.com | Example: https://www.example.com</small>
+                            </div>
+                        </div>
+
+                        <!-- Parking Info -->
+                        <div class="col-md-6">
+                            <div class="form-floating mb-3">
+                                <textarea class="form-control" id="parking_info" name="parking_info" 
+                                          style="height: 100px" placeholder="주차 정보 | Parking Information">{{ form_data.parking_info if form_data else '' }}</textarea>
+                                <label for="parking_info">주차 정보 | Parking Information</label>
+                            </div>
+                        </div>
+
+                        <div class="col-12 d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('index') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>뒤로 | Back
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-paper-plane me-2"></i>제출 | Submit
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="card-footer">
+                <div class="text-muted">
+                    <small>* 표시된 항목은 필수 입력 항목입니다. | Fields marked with * are required.</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set up form validation for place form
+        setupFormValidation('placeForm');
+    });
+</script>
+{% endblock %}

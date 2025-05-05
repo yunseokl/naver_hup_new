@@ -1,0 +1,123 @@
+/**
+ * Custom styles for the Naver Data Entry System
+ * Using Bootstrap as the primary framework with minimal custom styling
+ */
+
+/* Common styling */
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+main {
+    flex: 1;
+}
+
+/* Form styling */
+.form-floating > label {
+    font-weight: 500;
+}
+
+.form-floating > textarea {
+    height: 100px;
+}
+
+.invalid-feedback {
+    font-size: 0.85rem;
+}
+
+/* Card styling */
+.card {
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.card-header {
+    border-bottom: none;
+}
+
+.card-footer {
+    border-top: none;
+    background: rgba(var(--bs-dark-rgb), 0.05);
+}
+
+/* Navigation styling */
+.navbar-brand {
+    font-weight: 700;
+}
+
+.nav-link.active {
+    font-weight: 600;
+    color: var(--bs-primary) !important;
+}
+
+/* Success page styling */
+.text-success {
+    color: #28a745 !important;
+}
+
+/* Icon styling */
+.fa-check-circle {
+    animation: fadeInScale 0.5s ease-in-out;
+}
+
+@keyframes fadeInScale {
+    0% {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+    }
+    
+    h1, h2 {
+        font-size: 1.75rem;
+    }
+    
+    .lead {
+        font-size: 1rem;
+    }
+    
+    .btn {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.9rem;
+    }
+}
+
+/* Focus styling */
+.form-control:focus, 
+.form-select:focus {
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+.btn-primary:focus {
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.5);
+}
+
+.btn-success:focus {
+    box-shadow: 0 0 0 0.2rem rgba(var(--bs-success-rgb), 0.5);
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 0.5rem;
+}
+
+/* Language toggle animation (for future implementation) */
+.lang-toggle-animation {
+    transition: transform 0.3s ease;
+}
+
+.lang-toggle-animation:hover {
+    transform: scale(1.05);
+}
