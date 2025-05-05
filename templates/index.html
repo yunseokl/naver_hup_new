@@ -1,53 +1,57 @@
 {% extends "layout.html" %}
 
+{% block title %}홈{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center my-5">
-    <div class="col-md-10">
-        <div class="card shadow">
+<div class="row align-items-center g-5 py-5">
+    <div class="col-lg-6">
+        <h1 class="display-5 fw-bold lh-1 mb-3">네이버 데이터 입력 시스템</h1>
+        <p class="lead">네이버 쇼핑과 플레이스 데이터를 쉽게 입력하고 관리하세요. 엑셀 파일을 업로드하거나 수동으로 데이터를 입력할 수 있습니다.</p>
+        <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
+            <a href="{{ url_for('shopping') }}" class="btn btn-primary btn-lg px-4 me-md-2">쇼핑 데이터 입력</a>
+            <a href="{{ url_for('place') }}" class="btn btn-outline-secondary btn-lg px-4">플레이스 데이터 입력</a>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card bg-dark-subtle">
             <div class="card-body">
-                <h1 class="card-title text-center mb-4">네이버 데이터 입력 시스템 | Naver Data Entry System</h1>
-                <p class="lead text-center mb-5">네이버 쇼핑 및 플레이스 정보를 입력하기 위한 시스템입니다.<br>
-                This system allows you to enter data for Naver Shopping and Place slots.</p>
-                
-                <div class="row g-4 mb-4">
-                    <div class="col-md-6">
-                        <div class="card h-100 bg-dark">
-                            <div class="card-body text-center">
-                                <i class="fas fa-shopping-cart fa-4x mb-3 text-primary"></i>
-                                <h3 class="card-title">네이버 쇼핑 | Naver Shopping</h3>
-                                <p class="card-text">제품 정보, 가격, 설명 등 네이버 쇼핑에 필요한 데이터를 입력하세요.<br>
-                                Enter product details, prices, descriptions, and other data required for Naver Shopping.</p>
-                                <a href="{{ url_for('shopping') }}" class="btn btn-primary mt-3">
-                                    <i class="fas fa-edit me-2"></i>쇼핑 정보 입력 | Enter Shopping Data
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100 bg-dark">
-                            <div class="card-body text-center">
-                                <i class="fas fa-map-marker-alt fa-4x mb-3 text-success"></i>
-                                <h3 class="card-title">네이버 플레이스 | Naver Place</h3>
-                                <p class="card-text">위치, 영업시간, 연락처 등 네이버 플레이스에 필요한 데이터를 입력하세요.<br>
-                                Enter location details, business hours, contact information, and other data required for Naver Place.</p>
-                                <a href="{{ url_for('place') }}" class="btn btn-success mt-3">
-                                    <i class="fas fa-edit me-2"></i>플레이스 정보 입력 | Enter Place Data
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="alert alert-info" role="alert">
-                    <h4 class="alert-heading"><i class="fas fa-info-circle me-2"></i>참고 사항 | Notes</h4>
-                    <p>모든 데이터는 정확하게 입력해주세요. 네이버의 심사 과정에서 정보의 정확성이 중요합니다.<br>
-                    Please enter all data accurately. The accuracy of information is important in Naver's review process.</p>
-                    <hr>
-                    <p class="mb-0">필수 항목(*)을 모두 입력하셔야 제출이 가능합니다.<br>
-                    All required fields (*) must be filled to submit the form.</p>
-                </div>
+                <h5 class="card-title">기능 소개</h5>
+                <ul class="list-group list-group-flush mt-3">
+                    <li class="list-group-item bg-transparent">
+                        <i data-feather="shopping-bag" class="me-2"></i> 네이버 쇼핑 데이터 입력 및 관리
+                    </li>
+                    <li class="list-group-item bg-transparent">
+                        <i data-feather="map-pin" class="me-2"></i> 네이버 플레이스 데이터 입력 및 관리
+                    </li>
+                    <li class="list-group-item bg-transparent">
+                        <i data-feather="file" class="me-2"></i> 엑셀 파일 일괄 업로드 지원
+                    </li>
+                    <li class="list-group-item bg-transparent">
+                        <i data-feather="database" class="me-2"></i> 데이터베이스 저장 및 조회
+                    </li>
+                </ul>
+            </div>
+        </div>
+        <div class="card mt-4 bg-dark-subtle">
+            <div class="card-body">
+                <h5 class="card-title">엑셀 파일 업로드 안내</h5>
+                <p class="card-text">
+                    <small>
+                        엑셀 파일의 첫 번째 열은 필수 입력 항목입니다. 쇼핑의 경우 제품명, 플레이스의 경우 장소명이 이에 해당합니다.
+                        다른 열은 각 필드에 맞게 자동으로 매핑됩니다.
+                    </small>
+                </p>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+        setActiveNavLink();
+    });
+</script>
 {% endblock %}

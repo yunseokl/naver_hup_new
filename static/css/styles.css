@@ -1,123 +1,73 @@
-/**
- * Custom styles for the Naver Data Entry System
- * Using Bootstrap as the primary framework with minimal custom styling
- */
+/* 네이버 데이터 입력 시스템 스타일시트 */
 
-/* Common styling */
-body {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
+/* 필수 필드 표시 */
+.required-field::after {
+    content: " *";
+    color: var(--bs-danger);
 }
 
-main {
-    flex: 1;
+/* 헤더와 푸터 스타일 */
+.navbar {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2);
 }
 
-/* Form styling */
-.form-floating > label {
-    font-weight: 500;
+.footer {
+    margin-top: 3rem;
+    border-top: 1px solid var(--bs-dark-border-subtle);
 }
 
-.form-floating > textarea {
-    height: 100px;
-}
-
-.invalid-feedback {
-    font-size: 0.85rem;
-}
-
-/* Card styling */
+/* 카드 스타일 */
 .card {
-    border-radius: 0.5rem;
-    overflow: hidden;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
+    margin-bottom: 1.5rem;
 }
 
 .card-header {
-    border-bottom: none;
+    border-bottom: 1px solid var(--bs-dark-border-subtle);
 }
 
-.card-footer {
-    border-top: none;
-    background: rgba(var(--bs-dark-rgb), 0.05);
+/* 테이블 스타일 */
+.table-responsive {
+    border-radius: 0.25rem;
+    overflow: hidden;
 }
 
-/* Navigation styling */
-.navbar-brand {
-    font-weight: 700;
+/* 페이지 타이틀 */
+.page-title {
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
 }
 
-.nav-link.active {
-    font-weight: 600;
-    color: var(--bs-primary) !important;
+/* 입력 폼 관련 스타일 */
+textarea {
+    resize: vertical;
 }
 
-/* Success page styling */
-.text-success {
-    color: #28a745 !important;
-}
-
-/* Icon styling */
-.fa-check-circle {
-    animation: fadeInScale 0.5s ease-in-out;
-}
-
-@keyframes fadeInScale {
-    0% {
-        opacity: 0;
-        transform: scale(0.8);
-    }
-    100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* Responsive adjustments */
+/* 반응형 조정 */
 @media (max-width: 768px) {
-    .container {
-        padding-left: 1.5rem;
-        padding-right: 1.5rem;
-    }
-    
-    h1, h2 {
-        font-size: 1.75rem;
-    }
-    
-    .lead {
-        font-size: 1rem;
-    }
-    
-    .btn {
-        padding: 0.375rem 0.75rem;
-        font-size: 0.9rem;
+    .card {
+        margin-bottom: 1rem;
     }
 }
 
-/* Focus styling */
-.form-control:focus, 
-.form-select:focus {
-    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.25);
+/* 유효성 검증 관련 스타일 */
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875em;
+    color: var(--bs-danger);
 }
 
-.btn-primary:focus {
-    box-shadow: 0 0 0 0.2rem rgba(var(--bs-primary-rgb), 0.5);
+.was-validated .form-control:invalid ~ .invalid-feedback,
+.form-control.is-invalid ~ .invalid-feedback {
+    display: block;
 }
 
-.btn-success:focus {
-    box-shadow: 0 0 0 0.2rem rgba(var(--bs-success-rgb), 0.5);
-}
-
-/* Alert styling */
-.alert {
-    border-radius: 0.5rem;
-}
-
-/* Language toggle animation (for future implementation) */
-.lang-toggle-animation {
-    transition: transform 0.3s ease;
-}
-
-.lang-toggle-animation:hover {
-    transform: scale(1.05);
+/* 파일 업로드 관련 스타일 */
+.custom-file-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

@@ -1,137 +1,122 @@
 {% extends "layout.html" %}
 
+{% block title %}쇼핑 데이터 입력{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center my-4">
-    <div class="col-md-10">
-        <div class="card shadow">
-            <div class="card-header bg-primary text-white">
-                <h2 class="mb-0">
-                    <i class="fas fa-shopping-cart me-2"></i>네이버 쇼핑 정보 입력 | Naver Shopping Data Entry
-                </h2>
+<div class="row mb-4">
+    <div class="col-12">
+        <h2 class="border-bottom pb-2 mb-4">네이버 쇼핑 데이터 입력</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-dark-subtle">
+                <h5 class="card-title mb-0">엑셀 파일 업로드</h5>
             </div>
             <div class="card-body">
-                <p class="lead mb-4">네이버 쇼핑에 등록하기 위한 정보를 입력해주세요.<br>
-                Please enter the information needed to register on Naver Shopping.</p>
-                
-                <form id="shoppingForm" action="{{ url_for('shopping') }}" method="post" novalidate>
-                    <div class="row g-3">
-                        <!-- Product Name -->
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <input type="text" class="form-control" id="product_name" name="product_name" 
-                                       placeholder="제품명 | Product Name" required
-                                       value="{{ form_data.product_name if form_data else '' }}">
-                                <label for="product_name">제품명 | Product Name *</label>
-                                <div class="invalid-feedback">제품명을 입력해주세요. | Please enter a product name.</div>
-                            </div>
-                        </div>
-
-                        <!-- Price -->
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <input type="number" class="form-control" id="price" name="price" 
-                                       placeholder="가격 | Price" required
-                                       value="{{ form_data.price if form_data else '' }}">
-                                <label for="price">가격 (KRW) | Price *</label>
-                                <div class="invalid-feedback">유효한 가격을 입력해주세요. | Please enter a valid price.</div>
-                            </div>
-                        </div>
-
-                        <!-- Category -->
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <select class="form-select" id="category" name="category" required>
-                                    <option value="" disabled selected>카테고리를 선택하세요 | Select a category</option>
-                                    <option value="패션의류" {{ 'selected' if form_data and form_data.category == '패션의류' else '' }}>패션의류 | Fashion Clothing</option>
-                                    <option value="패션잡화" {{ 'selected' if form_data and form_data.category == '패션잡화' else '' }}>패션잡화 | Fashion Accessories</option>
-                                    <option value="화장품/미용" {{ 'selected' if form_data and form_data.category == '화장품/미용' else '' }}>화장품/미용 | Cosmetics/Beauty</option>
-                                    <option value="가구/인테리어" {{ 'selected' if form_data and form_data.category == '가구/인테리어' else '' }}>가구/인테리어 | Furniture/Interior</option>
-                                    <option value="식품" {{ 'selected' if form_data and form_data.category == '식품' else '' }}>식품 | Food</option>
-                                    <option value="생활/건강" {{ 'selected' if form_data and form_data.category == '생활/건강' else '' }}>생활/건강 | Lifestyle/Health</option>
-                                    <option value="디지털/가전" {{ 'selected' if form_data and form_data.category == '디지털/가전' else '' }}>디지털/가전 | Digital/Appliances</option>
-                                    <option value="스포츠/레저" {{ 'selected' if form_data and form_data.category == '스포츠/레저' else '' }}>스포츠/레저 | Sports/Leisure</option>
-                                    <option value="도서/티켓/음반" {{ 'selected' if form_data and form_data.category == '도서/티켓/음반' else '' }}>도서/티켓/음반 | Books/Tickets/Music</option>
-                                    <option value="기타" {{ 'selected' if form_data and form_data.category == '기타' else '' }}>기타 | Others</option>
-                                </select>
-                                <label for="category">카테고리 | Category *</label>
-                                <div class="invalid-feedback">카테고리를 선택해주세요. | Please select a category.</div>
-                            </div>
-                        </div>
-
-                        <!-- Brand -->
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <input type="text" class="form-control" id="brand" name="brand" 
-                                       placeholder="브랜드 | Brand"
-                                       value="{{ form_data.brand if form_data else '' }}">
-                                <label for="brand">브랜드 | Brand</label>
-                            </div>
-                        </div>
-
-                        <!-- Description -->
-                        <div class="col-12">
-                            <div class="form-floating mb-3">
-                                <textarea class="form-control" id="description" name="description" 
-                                          style="height: 120px" placeholder="제품 설명 | Product Description" required>{{ form_data.description if form_data else '' }}</textarea>
-                                <label for="description">제품 설명 | Product Description *</label>
-                                <div class="invalid-feedback">제품 설명을 입력해주세요. | Please enter a product description.</div>
-                            </div>
-                        </div>
-
-                        <!-- Features -->
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <textarea class="form-control" id="features" name="features" 
-                                          style="height: 120px" placeholder="제품 특징 | Product Features">{{ form_data.features if form_data else '' }}</textarea>
-                                <label for="features">제품 특징 | Product Features</label>
-                                <small class="text-muted">각 특징을 새 줄에 입력하세요. | Enter each feature on a new line.</small>
-                            </div>
-                        </div>
-
-                        <!-- Specifications -->
-                        <div class="col-md-6">
-                            <div class="form-floating mb-3">
-                                <textarea class="form-control" id="specifications" name="specifications" 
-                                          style="height: 120px" placeholder="제품 사양 | Product Specifications">{{ form_data.specifications if form_data else '' }}</textarea>
-                                <label for="specifications">제품 사양 | Product Specifications</label>
-                                <small class="text-muted">각 사양을 "항목: 값" 형태로 새 줄에 입력하세요. | Enter each specification as "Item: Value" on a new line.</small>
-                            </div>
-                        </div>
-
-                        <!-- Shipping Info -->
-                        <div class="col-12">
-                            <div class="form-floating mb-3">
-                                <textarea class="form-control" id="shipping_info" name="shipping_info" 
-                                          style="height: 100px" placeholder="배송 정보 | Shipping Information">{{ form_data.shipping_info if form_data else '' }}</textarea>
-                                <label for="shipping_info">배송 정보 | Shipping Information</label>
-                            </div>
-                        </div>
-
-                        <div class="col-12 d-flex justify-content-between mt-4">
-                            <a href="{{ url_for('index') }}" class="btn btn-secondary">
-                                <i class="fas fa-arrow-left me-2"></i>뒤로 | Back
-                            </a>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane me-2"></i>제출 | Submit
-                            </button>
+                <form action="{{ url_for('shopping') }}" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">엑셀 파일 (.xlsx, .xls) <span class="text-danger">*</span></label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx, .xls" required>
+                        <div class="form-text">
+                            첫 번째 열이 제품명(필수 항목)으로 처리됩니다.
                         </div>
                     </div>
+                    <button type="submit" class="btn btn-primary">업로드 및 처리</button>
                 </form>
             </div>
-            <div class="card-footer">
-                <div class="text-muted">
-                    <small>* 표시된 항목은 필수 입력 항목입니다. | Fields marked with * are required.</small>
-                </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-dark-subtle">
+                <h5 class="card-title mb-0">수동 데이터 입력</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('shopping') }}" method="post" id="shoppingForm">
+                    <div class="mb-3">
+                        <label for="product_name" class="form-label">제품명 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="product_name" name="product_name" 
+                               value="{{ form_data.product_name if form_data else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="price" class="form-label">가격 <span class="text-danger">*</span></label>
+                        <input type="number" class="form-control" id="price" name="price" 
+                               value="{{ form_data.price if form_data else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="category" class="form-label">카테고리 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="category" name="category" 
+                               value="{{ form_data.category if form_data else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="brand" class="form-label">브랜드</label>
+                        <input type="text" class="form-control" id="brand" name="brand" 
+                               value="{{ form_data.brand if form_data else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label for="description" class="form-label">제품 설명</label>
+                        <textarea class="form-control" id="description" name="description" rows="3">{{ form_data.description if form_data else '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="features" class="form-label">제품 특징</label>
+                        <textarea class="form-control" id="features" name="features" rows="2">{{ form_data.features if form_data else '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="specifications" class="form-label">제품 사양</label>
+                        <textarea class="form-control" id="specifications" name="specifications" rows="2">{{ form_data.specifications if form_data else '' }}</textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="shipping_info" class="form-label">배송 정보</label>
+                        <textarea class="form-control" id="shipping_info" name="shipping_info" rows="2">{{ form_data.shipping_info if form_data else '' }}</textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">저장</button>
+                </form>
             </div>
         </div>
     </div>
 </div>
+
+{% if shopping_data_list %}
+<div class="row mt-4">
+    <div class="col-12">
+        <h3 class="border-bottom pb-2 mb-3">최근 입력 데이터</h3>
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>제품명</th>
+                        <th>가격</th>
+                        <th>카테고리</th>
+                        <th>브랜드</th>
+                        <th>등록일시</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in shopping_data_list %}
+                    <tr>
+                        <td>{{ item.product_name }}</td>
+                        <td>{{ item.price }}</td>
+                        <td>{{ item.category }}</td>
+                        <td>{{ item.brand }}</td>
+                        <td>{{ item.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Set up form validation for shopping form
+        setActiveNavLink();
         setupFormValidation('shoppingForm');
     });
 </script>
