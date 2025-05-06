@@ -1,0 +1,792 @@
+{% extends "layout.html" %}
+
+{% block title %}슬롯 관리 - 네이버 광고 슬롯 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i data-feather="database" class="me-2"></i> 슬롯 관리</h2>
+    <div>
+        <div class="btn-group me-2">
+            <a href="{{ url_for('distributor_slots') }}?type=shopping" class="btn btn-outline-primary {% if slot_type == 'shopping' %}active{% endif %}">
+                <i data-feather="shopping-bag" class="me-1"></i> 쇼핑 슬롯
+            </a>
+            <a href="{{ url_for('distributor_slots') }}?type=place" class="btn btn-outline-info {% if slot_type == 'place' %}active{% endif %}">
+                <i data-feather="map-pin" class="me-1"></i> 플레이스 슬롯
+            </a>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createSlotModal">
+                <i data-feather="plus" class="me-1"></i> 슬롯 추가
+            </button>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#uploadSlotModal">
+                <i data-feather="upload" class="me-1"></i> 엑셀 일괄 등록
+            </button>
+            <div class="btn-group">
+                <button class="btn btn-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i data-feather="download" class="me-1"></i> 엑셀 내보내기
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="{{ url_for('export_slots', type='shopping') }}">쇼핑 슬롯 양식</a></li>
+                    <li><a class="dropdown-item" href="{{ url_for('export_slots', type='place') }}">플레이스 슬롯 양식</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="{{ url_for('export_slots', type='all') }}">전체 슬롯 데이터</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 필터 및 검색 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form id="filterForm" method="GET" action="{{ url_for('distributor_slots') }}">
+            <input type="hidden" name="type" value="{{ slot_type }}">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">상태</label>
+                    <select name="status" class="form-select">
+                        <option value="">전체</option>
+                        <option value="pending" {% if status == 'pending' %}selected{% endif %}>승인 대기</option>
+                        <option value="approved" {% if status == 'approved' %}selected{% endif %}>승인됨</option>
+                        <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>거절됨</option>
+                        <option value="active" {% if status == 'active' %}selected{% endif %}>활성</option>
+                        <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>비활성</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">대행사</label>
+                    <select name="agency_id" class="form-select">
+                        <option value="">전체 대행사</option>
+                        {% for agency in agencies %}
+                        <option value="{{ agency.id }}" {% if agency_id == agency.id|string %}selected{% endif %}>{{ agency.company_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">검색</label>
+                    <input type="text" name="search" class="form-control" placeholder="슬롯명, 키워드 등 검색..." value="{{ search }}">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i data-feather="filter" class="me-1"></i> 필터 적용
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 슬롯 목록 -->
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">{{ '쇼핑' if slot_type == 'shopping' else '플레이스' }} 슬롯 목록</h5>
+            <span class="badge bg-secondary">총 {{ slots|length }}개</span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            {% if slot_type == 'shopping' %}
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="selectAll">
+                            </div>
+                        </th>
+                        <th>슬롯명</th>
+                        <th>대행사</th>
+                        <th>상품명</th>
+                        <th>키워드</th>
+                        <th>가격</th>
+                        <th>기간</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if slots %}
+                        {% for slot in slots %}
+                        <tr>
+                            <td>
+                                <div class="form-check">
+                                    <input class="form-check-input slot-check" type="checkbox" value="{{ slot.id }}">
+                                </div>
+                            </td>
+                            <td>{{ slot.slot_name }}</td>
+                            <td>{{ slot.user.company_name }}</td>
+                            <td>{{ slot.product_name }}</td>
+                            <td>{{ slot.keywords[:20] }}{% if slot.keywords and slot.keywords|length > 20 %}...{% endif %}</td>
+                            <td>
+                                {% if slot.sale_price %}
+                                <span class="text-danger">{{ slot.sale_price }}원</span>
+                                <small class="text-muted"><del>{{ slot.price }}원</del></small>
+                                {% else %}
+                                {{ slot.price }}원
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if slot.start_date and slot.end_date %}
+                                {{ slot.start_date.strftime('%Y-%m-%d') }} ~ {{ slot.end_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge
+                                    {% if slot.status == 'pending' %}bg-warning
+                                    {% elif slot.status == 'approved' %}bg-success
+                                    {% elif slot.status == 'rejected' %}bg-danger
+                                    {% elif slot.status == 'active' %}bg-info
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ slot.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary view-slot" data-id="{{ slot.id }}" data-type="shopping">
+                                        <i data-feather="eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success edit-slot" data-id="{{ slot.id }}" data-type="shopping">
+                                        <i data-feather="edit-2"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger delete-slot" data-id="{{ slot.id }}" data-type="shopping">
+                                        <i data-feather="trash-2"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                등록된 쇼핑 슬롯이 없습니다.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% else %}
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="selectAll">
+                            </div>
+                        </th>
+                        <th>슬롯명</th>
+                        <th>대행사</th>
+                        <th>장소명</th>
+                        <th>주소</th>
+                        <th>업종</th>
+                        <th>기간</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if slots %}
+                        {% for slot in slots %}
+                        <tr>
+                            <td>
+                                <div class="form-check">
+                                    <input class="form-check-input slot-check" type="checkbox" value="{{ slot.id }}">
+                                </div>
+                            </td>
+                            <td>{{ slot.slot_name }}</td>
+                            <td>{{ slot.user.company_name }}</td>
+                            <td>{{ slot.place_name }}</td>
+                            <td>{{ slot.address[:30] }}{% if slot.address and slot.address|length > 30 %}...{% endif %}</td>
+                            <td>{{ slot.business_type }}</td>
+                            <td>
+                                {% if slot.start_date and slot.end_date %}
+                                {{ slot.start_date.strftime('%Y-%m-%d') }} ~ {{ slot.end_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge
+                                    {% if slot.status == 'pending' %}bg-warning
+                                    {% elif slot.status == 'approved' %}bg-success
+                                    {% elif slot.status == 'rejected' %}bg-danger
+                                    {% elif slot.status == 'active' %}bg-info
+                                    {% else %}bg-secondary{% endif %}">
+                                    {{ slot.status }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary view-slot" data-id="{{ slot.id }}" data-type="place">
+                                        <i data-feather="eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success edit-slot" data-id="{{ slot.id }}" data-type="place">
+                                        <i data-feather="edit-2"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger delete-slot" data-id="{{ slot.id }}" data-type="place">
+                                        <i data-feather="trash-2"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                등록된 플레이스 슬롯이 없습니다.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-footer">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <button type="button" class="btn btn-sm btn-warning" id="bulkApproveBtn">
+                    <i data-feather="check-circle" class="me-1"></i> 선택 승인
+                </button>
+                <button type="button" class="btn btn-sm btn-danger" id="bulkRejectBtn">
+                    <i data-feather="x-circle" class="me-1"></i> 선택 거절
+                </button>
+            </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    <li class="page-item disabled">
+                        <a class="page-link" href="#" tabindex="-1">이전</a>
+                    </li>
+                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                    <li class="page-item"><a class="page-link" href="#">2</a></li>
+                    <li class="page-item"><a class="page-link" href="#">3</a></li>
+                    <li class="page-item">
+                        <a class="page-link" href="#">다음</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+<!-- 슬롯 생성 모달 -->
+<div class="modal fade" id="createSlotModal" tabindex="-1" aria-labelledby="createSlotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createSlotModalLabel">{{ '쇼핑' if slot_type == 'shopping' else '플레이스' }} 슬롯 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createSlotForm" method="POST" action="{{ url_for('create_distributor_slot') }}">
+                    <input type="hidden" name="slot_type" value="{{ slot_type }}">
+                    
+                    <div class="mb-3">
+                        <label for="agency_id" class="form-label required-field">대행사</label>
+                        <select class="form-select" id="agency_id" name="agency_id" required>
+                            <option value="" selected disabled>대행사 선택</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}">{{ agency.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="slot_name" class="form-label required-field">슬롯명</label>
+                        <input type="text" class="form-control" id="slot_name" name="slot_name" required>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="start_date" class="form-label">시작일</label>
+                            <input type="date" class="form-control" id="start_date" name="start_date">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="end_date" class="form-label">종료일</label>
+                            <input type="date" class="form-control" id="end_date" name="end_date">
+                        </div>
+                    </div>
+                    
+                    {% if slot_type == 'shopping' %}
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="store_type" class="form-label">스토어 타입</label>
+                            <select class="form-select" id="store_type" name="store_type">
+                                <option value="스마트스토어">스마트스토어</option>
+                                <option value="쇼핑몰">쇼핑몰</option>
+                                <option value="브랜드몰">브랜드몰</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="product_id" class="form-label">상품 ID</label>
+                            <input type="text" class="form-control" id="product_id" name="product_id">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="product_name" class="form-label required-field">상품명</label>
+                        <input type="text" class="form-control" id="product_name" name="product_name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="keywords" class="form-label">키워드 (쉼표로 구분)</label>
+                        <textarea class="form-control" id="keywords" name="keywords" rows="2"></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="price" class="form-label">가격</label>
+                            <input type="number" class="form-control" id="price" name="price">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="sale_price" class="form-label">할인가</label>
+                            <input type="number" class="form-control" id="sale_price" name="sale_price">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="bid_type" class="form-label">입찰방식</label>
+                            <select class="form-select" id="bid_type" name="bid_type">
+                                <option value="CPC">CPC</option>
+                                <option value="CPM">CPM</option>
+                                <option value="CPS">CPS</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="slot_price" class="form-label required-field">슬롯 단가 (원)</label>
+                            <input type="number" class="form-control" id="slot_price" name="slot_price" required>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="mb-3">
+                        <label for="place_name" class="form-label required-field">장소명</label>
+                        <input type="text" class="form-control" id="place_name" name="place_name" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="address" class="form-label">주소</label>
+                        <input type="text" class="form-control" id="address" name="address">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="business_type" class="form-label">업종분류</label>
+                            <input type="text" class="form-control" id="business_type" name="business_type">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="place_id" class="form-label">장소 ID</label>
+                            <input type="text" class="form-control" id="place_id" name="place_id">
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="deadline_date" class="form-label">마감일</label>
+                            <input type="date" class="form-control" id="deadline_date" name="deadline_date">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="slot_price" class="form-label required-field">슬롯 단가 (원)</label>
+                            <input type="number" class="form-control" id="slot_price" name="slot_price" required>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">메모</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="submitSlotBtn">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 엑셀 업로드 모달 -->
+<div class="modal fade" id="uploadSlotModal" tabindex="-1" aria-labelledby="uploadSlotModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="uploadSlotModalLabel">엑셀 일괄 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="uploadSlotForm" method="POST" action="{{ url_for('upload_distributor_slots') }}" enctype="multipart/form-data">
+                    <input type="hidden" name="slot_type" value="{{ slot_type }}">
+                    
+                    <div class="mb-3">
+                        <label for="agency_id_upload" class="form-label required-field">대행사</label>
+                        <select class="form-select" id="agency_id_upload" name="agency_id" required>
+                            <option value="" selected disabled>대행사 선택</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}">{{ agency.company_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="file" class="form-label required-field">엑셀 파일</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".xlsx, .xls" required>
+                        <div class="form-text">
+                            <a href="{{ url_for('export_slots', type=slot_type, template='true') }}" class="text-decoration-none">
+                                <i data-feather="download" class="me-1" style="width: 14px; height: 14px;"></i> 양식 다운로드
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="slot_price_upload" class="form-label required-field">기본 슬롯 단가 (원)</label>
+                        <input type="number" class="form-control" id="slot_price_upload" name="slot_price" required>
+                        <div class="form-text">개별 단가가 없는 경우 이 금액으로 적용됩니다.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="submitUploadBtn">업로드</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬롯 상세 정보 모달 -->
+<div class="modal fade" id="viewSlotModal" tabindex="-1" aria-labelledby="viewSlotModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewSlotModalLabel">슬롯 상세 정보</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="fw-bold d-block">슬롯명</label>
+                            <span id="view_slot_name"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-bold d-block">대행사</label>
+                            <span id="view_agency_name"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-bold d-block">상태</label>
+                            <span id="view_status"></span>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="fw-bold d-block">등록일</label>
+                            <span id="view_created_at"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-bold d-block">기간</label>
+                            <span id="view_period"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="fw-bold d-block">슬롯 단가</label>
+                            <span id="view_slot_price"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="shopping_details" class="d-none">
+                    <h6 class="border-bottom pb-2 mb-3">쇼핑 슬롯 정보</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">상품명</label>
+                                <span id="view_product_name"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">스토어 타입</label>
+                                <span id="view_store_type"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">상품 ID</label>
+                                <span id="view_product_id"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">가격</label>
+                                <span id="view_price"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">입찰방식</label>
+                                <span id="view_bid_type"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">키워드</label>
+                                <span id="view_keywords"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="place_details" class="d-none">
+                    <h6 class="border-bottom pb-2 mb-3">플레이스 슬롯 정보</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">장소명</label>
+                                <span id="view_place_name"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">장소 ID</label>
+                                <span id="view_place_id"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">업종분류</label>
+                                <span id="view_business_type"></span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">주소</label>
+                                <span id="view_address"></span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="fw-bold d-block">마감일</label>
+                                <span id="view_deadline_date"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="fw-bold d-block">메모</label>
+                    <span id="view_notes"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <button type="button" class="btn btn-success edit-slot-btn" data-id="" data-type="">
+                    <i data-feather="edit-2" class="me-1"></i> 수정
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 삭제 확인 모달 -->
+<div class="modal fade" id="deleteSlotModal" tabindex="-1" aria-labelledby="deleteSlotModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteSlotModalLabel">슬롯 삭제 확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>정말로 이 슬롯을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+                <input type="hidden" id="delete_slot_id">
+                <input type="hidden" id="delete_slot_type">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">삭제</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 일괄 처리 모달 -->
+<div class="modal fade" id="bulkActionModal" tabindex="-1" aria-labelledby="bulkActionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkActionModalLabel">일괄 처리 확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>선택한 <span id="selectedCount">0</span>개 슬롯을 <span id="actionType">승인</span>하시겠습니까?</p>
+                <input type="hidden" id="bulk_action_type">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="confirmBulkBtn">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 폼 제출 버튼
+        document.getElementById('submitSlotBtn').addEventListener('click', function() {
+            document.getElementById('createSlotForm').submit();
+        });
+        
+        document.getElementById('submitUploadBtn').addEventListener('click', function() {
+            document.getElementById('uploadSlotForm').submit();
+        });
+        
+        // 전체 선택 기능
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const slotCheckboxes = document.querySelectorAll('.slot-check');
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                slotCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+        }
+        
+        // 슬롯 조회 기능
+        const viewButtons = document.querySelectorAll('.view-slot');
+        const viewModal = new bootstrap.Modal(document.getElementById('viewSlotModal'));
+        
+        viewButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const slotId = this.getAttribute('data-id');
+                const slotType = this.getAttribute('data-type');
+                
+                // Ajax로 슬롯 정보 조회 (실제로는 서버에서 데이터를 가져와야 함)
+                // 여기서는 임의의 데이터로 모달 채우기
+                if (slotType === 'shopping') {
+                    document.getElementById('shopping_details').classList.remove('d-none');
+                    document.getElementById('place_details').classList.add('d-none');
+                    
+                    // 쇼핑 슬롯 정보 세팅 (실제 구현시 서버 데이터로 대체)
+                    document.getElementById('view_slot_name').textContent = "슬롯 " + slotId;
+                    document.getElementById('view_agency_name').textContent = "대행사 이름";
+                    document.getElementById('view_status').innerHTML = '<span class="badge bg-success">승인됨</span>';
+                    document.getElementById('view_created_at').textContent = "2025-05-06";
+                    document.getElementById('view_period').textContent = "2025-05-01 ~ 2025-05-31";
+                    document.getElementById('view_slot_price').textContent = "10,000원";
+                    
+                    document.getElementById('view_product_name').textContent = "제품명 샘플";
+                    document.getElementById('view_store_type').textContent = "스마트스토어";
+                    document.getElementById('view_product_id').textContent = "P12345";
+                    document.getElementById('view_price').textContent = "50,000원";
+                    document.getElementById('view_bid_type').textContent = "CPC";
+                    document.getElementById('view_keywords').textContent = "키워드1, 키워드2, 키워드3";
+                } else {
+                    document.getElementById('shopping_details').classList.add('d-none');
+                    document.getElementById('place_details').classList.remove('d-none');
+                    
+                    // 플레이스 슬롯 정보 세팅 (실제 구현시 서버 데이터로 대체)
+                    document.getElementById('view_slot_name').textContent = "슬롯 " + slotId;
+                    document.getElementById('view_agency_name').textContent = "대행사 이름";
+                    document.getElementById('view_status').innerHTML = '<span class="badge bg-success">승인됨</span>';
+                    document.getElementById('view_created_at').textContent = "2025-05-06";
+                    document.getElementById('view_period').textContent = "2025-05-01 ~ 2025-05-31";
+                    document.getElementById('view_slot_price').textContent = "15,000원";
+                    
+                    document.getElementById('view_place_name').textContent = "장소명 샘플";
+                    document.getElementById('view_place_id').textContent = "PL12345";
+                    document.getElementById('view_business_type').textContent = "음식점";
+                    document.getElementById('view_address').textContent = "서울시 강남구 ...";
+                    document.getElementById('view_deadline_date').textContent = "2025-05-31";
+                }
+                
+                document.getElementById('view_notes').textContent = "메모 내용...";
+                
+                // 수정 버튼에 ID와 타입 설정
+                const editBtn = document.querySelector('.edit-slot-btn');
+                editBtn.setAttribute('data-id', slotId);
+                editBtn.setAttribute('data-type', slotType);
+                
+                viewModal.show();
+            });
+        });
+        
+        // 슬롯 삭제 기능
+        const deleteButtons = document.querySelectorAll('.delete-slot');
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteSlotModal'));
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const slotId = this.getAttribute('data-id');
+                const slotType = this.getAttribute('data-type');
+                
+                document.getElementById('delete_slot_id').value = slotId;
+                document.getElementById('delete_slot_type').value = slotType;
+                
+                deleteModal.show();
+            });
+        });
+        
+        confirmDeleteBtn.addEventListener('click', function() {
+            const slotId = document.getElementById('delete_slot_id').value;
+            const slotType = document.getElementById('delete_slot_type').value;
+            
+            // 실제 삭제 처리는 서버로 요청 필요
+            // 여기서는 알림만 표시
+            alert(`슬롯 ${slotId}(${slotType}) 삭제를 요청했습니다.`);
+            deleteModal.hide();
+        });
+        
+        // 일괄 승인/거절 기능
+        const bulkApproveBtn = document.getElementById('bulkApproveBtn');
+        const bulkRejectBtn = document.getElementById('bulkRejectBtn');
+        const bulkActionModal = new bootstrap.Modal(document.getElementById('bulkActionModal'));
+        const confirmBulkBtn = document.getElementById('confirmBulkBtn');
+        
+        bulkApproveBtn.addEventListener('click', function() {
+            const selectedCount = getSelectedCount();
+            if (selectedCount === 0) {
+                alert('승인할 슬롯을 먼저 선택해주세요.');
+                return;
+            }
+            
+            document.getElementById('selectedCount').textContent = selectedCount;
+            document.getElementById('actionType').textContent = '승인';
+            document.getElementById('bulk_action_type').value = 'approve';
+            document.getElementById('confirmBulkBtn').className = 'btn btn-success';
+            
+            bulkActionModal.show();
+        });
+        
+        bulkRejectBtn.addEventListener('click', function() {
+            const selectedCount = getSelectedCount();
+            if (selectedCount === 0) {
+                alert('거절할 슬롯을 먼저 선택해주세요.');
+                return;
+            }
+            
+            document.getElementById('selectedCount').textContent = selectedCount;
+            document.getElementById('actionType').textContent = '거절';
+            document.getElementById('bulk_action_type').value = 'reject';
+            document.getElementById('confirmBulkBtn').className = 'btn btn-danger';
+            
+            bulkActionModal.show();
+        });
+        
+        confirmBulkBtn.addEventListener('click', function() {
+            const action = document.getElementById('bulk_action_type').value;
+            const selectedIds = Array.from(slotCheckboxes)
+                .filter(checkbox => checkbox.checked)
+                .map(checkbox => checkbox.value);
+            
+            // 실제 일괄 처리는 서버로 요청 필요
+            // 여기서는 알림만 표시
+            alert(`선택한 ${selectedIds.length}개 슬롯을 ${action === 'approve' ? '승인' : '거절'}합니다.`);
+            bulkActionModal.hide();
+        });
+        
+        function getSelectedCount() {
+            return Array.from(slotCheckboxes).filter(checkbox => checkbox.checked).length;
+        }
+        
+        // 수정 버튼 이벤트
+        document.querySelector('.edit-slot-btn').addEventListener('click', function() {
+            const slotId = this.getAttribute('data-id');
+            const slotType = this.getAttribute('data-type');
+            
+            // 수정 페이지로 이동 또는 수정 모달 표시
+            alert(`슬롯 ${slotId}(${slotType}) 수정 기능은 아직 구현되지 않았습니다.`);
+            viewModal.hide();
+        });
+    });
+</script>
+{% endblock %}

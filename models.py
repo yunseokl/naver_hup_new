@@ -102,6 +102,12 @@ class ShoppingSlot(db.Model):
     bid_type = db.Column(db.String(50))  # 입찰방식
     targeting = db.Column(db.String(20))  # 타겟팅
     
+    # 슬롯 관련 정보
+    slot_price = db.Column(db.Integer)  # 슬롯 단가 (원)
+    admin_price = db.Column(db.Integer)  # 어드민 정산가 (원)
+    settlement_status = db.Column(db.String(20), default='pending')  # 정산 상태 (pending, completed)
+    notes = db.Column(db.Text)  # 메모
+    
     # 파일 정보
     filename = db.Column(db.String(255))  # 업로드된 파일명
     original_filename = db.Column(db.String(255))  # 원래 파일명
@@ -153,6 +159,12 @@ class PlaceSlot(db.Model):
     start_date = db.Column(db.Date)  # 시작일
     end_date = db.Column(db.Date)  # 종료일
     deadline_date = db.Column(db.Date)  # 마감일
+    
+    # 슬롯 관련 정보
+    slot_price = db.Column(db.Integer)  # 슬롯 단가 (원)
+    admin_price = db.Column(db.Integer)  # 어드민 정산가 (원)
+    settlement_status = db.Column(db.String(20), default='pending')  # 정산 상태 (pending, completed)
+    notes = db.Column(db.Text)  # 메모
     
     # 파일 정보
     filename = db.Column(db.String(255))  # 업로드된 파일명

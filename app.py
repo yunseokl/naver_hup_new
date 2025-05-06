@@ -435,6 +435,404 @@ def distributor_agencies():
     agencies = current_user.agencies.all()
     return render_template('distributor/agencies.html', agencies=agencies)
 
+@app.route('/distributor/slots')
+@distributor_required
+def distributor_slots():
+    """총판의 슬롯 관리 페이지"""
+    slot_type = request.args.get('type', 'shopping')
+    status = request.args.get('status', '')
+    agency_id = request.args.get('agency_id', '')
+    search = request.args.get('search', '')
+    
+    # 대행사 목록
+    agencies = current_user.agencies.all()
+    
+    # 기본 쿼리 구성
+    if slot_type == 'shopping':
+        query = ShoppingSlot.query.join(User).filter(User.parent_id == current_user.id)
+    else:
+        query = PlaceSlot.query.join(User).filter(User.parent_id == current_user.id)
+    
+    # 필터 적용
+    if status:
+        query = query.filter_by(status=status)
+    
+    if agency_id:
+        query = query.filter(ShoppingSlot.user_id == agency_id if slot_type == 'shopping' else PlaceSlot.user_id == agency_id)
+    
+    if search:
+        if slot_type == 'shopping':
+            query = query.filter(or_(
+                ShoppingSlot.slot_name.like(f'%{search}%'),
+                ShoppingSlot.product_name.like(f'%{search}%'),
+                ShoppingSlot.keywords.like(f'%{search}%'),
+                ShoppingSlot.store_name.like(f'%{search}%')
+            ))
+        else:
+            query = query.filter(or_(
+                PlaceSlot.slot_name.like(f'%{search}%'),
+                PlaceSlot.place_name.like(f'%{search}%'),
+                PlaceSlot.address.like(f'%{search}%'),
+                PlaceSlot.business_type.like(f'%{search}%')
+            ))
+    
+    # 결과 조회
+    slots = query.all()
+    
+    return render_template('distributor/slots.html', 
+                          slot_type=slot_type,
+                          status=status,
+                          agency_id=agency_id,
+                          search=search,
+                          agencies=agencies,
+                          slots=slots)
+
+@app.route('/distributor/slots/create', methods=['POST'])
+@distributor_required
+def create_distributor_slot():
+    """총판의 슬롯 생성"""
+    slot_type = request.form.get('slot_type')
+    agency_id = request.form.get('agency_id')
+    slot_name = request.form.get('slot_name')
+    slot_price = request.form.get('slot_price')
+    
+    # 대행사 확인
+    agency = User.query.get_or_404(agency_id)
+    if agency.parent_id != current_user.id:
+        abort(403)  # 자신의 대행사가 아닌 경우 접근 불가
+    
+    # 날짜 처리
+    start_date = request.form.get('start_date')
+    if start_date:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    
+    end_date = request.form.get('end_date')
+    if end_date:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    
+    try:
+        if slot_type == 'shopping':
+            # 쇼핑 슬롯 생성
+            product_name = request.form.get('product_name')
+            store_type = request.form.get('store_type')
+            product_id = request.form.get('product_id')
+            keywords = request.form.get('keywords')
+            price = request.form.get('price')
+            sale_price = request.form.get('sale_price')
+            bid_type = request.form.get('bid_type')
+            notes = request.form.get('notes')
+            
+            slot = ShoppingSlot(
+                user_id=agency_id,
+                slot_name=slot_name,
+                store_type=store_type,
+                product_id=product_id,
+                product_name=product_name,
+                keywords=keywords,
+                price=price if price else None,
+                sale_price=sale_price if sale_price else None,
+                start_date=start_date,
+                end_date=end_date,
+                bid_type=bid_type,
+                status='approved',  # 총판이 생성하므로 바로 승인 상태
+                slot_price=slot_price
+            )
+        else:
+            # 플레이스 슬롯 생성
+            place_name = request.form.get('place_name')
+            address = request.form.get('address')
+            business_type = request.form.get('business_type')
+            place_id = request.form.get('place_id')
+            deadline_date = request.form.get('deadline_date')
+            notes = request.form.get('notes')
+            
+            if deadline_date:
+                deadline_date = datetime.strptime(deadline_date, '%Y-%m-%d').date()
+            
+            slot = PlaceSlot(
+                user_id=agency_id,
+                slot_name=slot_name,
+                place_name=place_name,
+                address=address,
+                business_type=business_type,
+                place_id=place_id,
+                start_date=start_date,
+                end_date=end_date,
+                deadline_date=deadline_date,
+                status='approved',  # 총판이 생성하므로 바로 승인 상태
+                slot_price=slot_price
+            )
+        
+        # 슬롯과 슬롯 정산 정보 저장
+        db.session.add(slot)
+        db.session.commit()
+        
+        flash(f'{slot_type} 슬롯이 성공적으로 생성되었습니다.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'슬롯 생성 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    return redirect(url_for('distributor_slots', type=slot_type))
+
+@app.route('/distributor/slots/upload', methods=['POST'])
+@distributor_required
+def upload_distributor_slots():
+    """총판의 슬롯 일괄 업로드"""
+    slot_type = request.form.get('slot_type')
+    agency_id = request.form.get('agency_id')
+    slot_price = request.form.get('slot_price')
+    
+    # 대행사 확인
+    agency = User.query.get_or_404(agency_id)
+    if agency.parent_id != current_user.id:
+        abort(403)  # 자신의 대행사가 아닌 경우 접근 불가
+    
+    if 'file' not in request.files:
+        flash('파일이 제공되지 않았습니다.', 'danger')
+        return redirect(url_for('distributor_slots', type=slot_type))
+    
+    file = request.files['file']
+    
+    if file.filename == '':
+        flash('선택된 파일이 없습니다.', 'danger')
+        return redirect(url_for('distributor_slots', type=slot_type))
+    
+    if not allowed_file(file.filename):
+        flash('허용되지 않는 파일 형식입니다. Excel 파일(.xlsx, .xls)만 업로드 가능합니다.', 'danger')
+        return redirect(url_for('distributor_slots', type=slot_type))
+    
+    try:
+        # 파일 저장
+        filename = secure_filename(file.filename)
+        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(file_path)
+        
+        # 엑셀 파일 처리
+        df = pd.read_excel(file_path)
+        
+        success_count = 0
+        error_count = 0
+        
+        for _, row in df.iterrows():
+            try:
+                if slot_type == 'shopping':
+                    # 쇼핑 슬롯 생성
+                    slot = ShoppingSlot(
+                        user_id=agency_id,
+                        slot_name=row.get('슬롯명', ''),
+                        store_type=row.get('스토어 타입', ''),
+                        product_id=row.get('상품 ID', ''),
+                        product_name=row.get('상품명', ''),
+                        keywords=row.get('키워드', ''),
+                        price=row.get('가격', None),
+                        sale_price=row.get('할인가', None),
+                        start_date=pd.to_datetime(row.get('시작일')).date() if pd.notna(row.get('시작일')) else None,
+                        end_date=pd.to_datetime(row.get('종료일')).date() if pd.notna(row.get('종료일')) else None,
+                        bid_type=row.get('입찰방식', ''),
+                        status='approved',  # 총판이 생성하므로 바로 승인 상태
+                        slot_price=row.get('슬롯 단가', slot_price)
+                    )
+                else:
+                    # 플레이스 슬롯 생성
+                    slot = PlaceSlot(
+                        user_id=agency_id,
+                        slot_name=row.get('슬롯명', ''),
+                        place_name=row.get('장소명', ''),
+                        address=row.get('주소', ''),
+                        business_type=row.get('업종분류', ''),
+                        place_id=row.get('장소 ID', ''),
+                        start_date=pd.to_datetime(row.get('시작일')).date() if pd.notna(row.get('시작일')) else None,
+                        end_date=pd.to_datetime(row.get('종료일')).date() if pd.notna(row.get('종료일')) else None,
+                        deadline_date=pd.to_datetime(row.get('마감일')).date() if pd.notna(row.get('마감일')) else None,
+                        status='approved',  # 총판이 생성하므로 바로 승인 상태
+                        slot_price=row.get('슬롯 단가', slot_price)
+                    )
+                
+                db.session.add(slot)
+                success_count += 1
+            except Exception as e:
+                error_count += 1
+                logger.error(f"Error processing row: {e}")
+        
+        db.session.commit()
+        
+        if success_count > 0:
+            flash(f'{success_count}개의 {slot_type} 슬롯이 성공적으로 등록되었습니다.', 'success')
+        
+        if error_count > 0:
+            flash(f'{error_count}개의 슬롯을 처리하는 중 오류가 발생했습니다.', 'warning')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'엑셀 파일 처리 중 오류가 발생했습니다: {str(e)}', 'danger')
+        logger.error(f"Error processing Excel file: {e}")
+    
+    return redirect(url_for('distributor_slots', type=slot_type))
+
+@app.route('/export-slots')
+@login_required
+def export_slots():
+    """슬롯 엑셀 양식 내보내기"""
+    slot_type = request.args.get('type', 'shopping')
+    is_template = request.args.get('template', 'false') == 'true'
+    
+    if is_template:
+        # 양식만 제공
+        if slot_type == 'shopping':
+            data = {
+                '슬롯명': ['샘플 슬롯 1', '샘플 슬롯 2'],
+                '스토어 타입': ['스마트스토어', '브랜드몰'],
+                '상품 ID': ['P12345', 'P67890'],
+                '상품명': ['샘플 상품 1', '샘플 상품 2'],
+                '키워드': ['키워드1,키워드2', '키워드3,키워드4'],
+                '가격': [10000, 20000],
+                '할인가': [8000, 18000],
+                '시작일': [pd.Timestamp('2025-05-01'), pd.Timestamp('2025-05-15')],
+                '종료일': [pd.Timestamp('2025-05-31'), pd.Timestamp('2025-06-15')],
+                '입찰방식': ['CPC', 'CPM'],
+                '슬롯 단가': [5000, 6000]
+            }
+        else:
+            data = {
+                '슬롯명': ['샘플 슬롯 1', '샘플 슬롯 2'],
+                '장소명': ['샘플 장소 1', '샘플 장소 2'],
+                '주소': ['서울시 강남구...', '서울시 송파구...'],
+                '업종분류': ['음식점', '카페'],
+                '장소 ID': ['PL12345', 'PL67890'],
+                '시작일': [pd.Timestamp('2025-05-01'), pd.Timestamp('2025-05-15')],
+                '종료일': [pd.Timestamp('2025-05-31'), pd.Timestamp('2025-06-15')],
+                '마감일': [pd.Timestamp('2025-06-15'), pd.Timestamp('2025-07-01')],
+                '슬롯 단가': [7000, 8000]
+            }
+    else:
+        # 실제 데이터 추출
+        if current_user.is_admin():
+            # 관리자는 모든 슬롯을 볼 수 있음
+            if slot_type == 'shopping':
+                slots = ShoppingSlot.query.all()
+            elif slot_type == 'place':
+                slots = PlaceSlot.query.all()
+            else:  # 'all'인 경우
+                shopping_slots = ShoppingSlot.query.all()
+                place_slots = PlaceSlot.query.all()
+        elif current_user.is_distributor():
+            # 총판은 자신의 대행사 슬롯만 볼 수 있음
+            agency_ids = [agency.id for agency in current_user.agencies]
+            
+            if slot_type == 'shopping':
+                slots = ShoppingSlot.query.filter(ShoppingSlot.user_id.in_(agency_ids)).all() if agency_ids else []
+            elif slot_type == 'place':
+                slots = PlaceSlot.query.filter(PlaceSlot.user_id.in_(agency_ids)).all() if agency_ids else []
+            else:  # 'all'인 경우
+                shopping_slots = ShoppingSlot.query.filter(ShoppingSlot.user_id.in_(agency_ids)).all() if agency_ids else []
+                place_slots = PlaceSlot.query.filter(PlaceSlot.user_id.in_(agency_ids)).all() if agency_ids else []
+        else:
+            # 대행사는 자신의 슬롯만 볼 수 있음
+            if slot_type == 'shopping':
+                slots = current_user.shopping_slots.all()
+            elif slot_type == 'place':
+                slots = current_user.place_slots.all()
+            else:  # 'all'인 경우
+                shopping_slots = current_user.shopping_slots.all()
+                place_slots = current_user.place_slots.all()
+        
+        # 데이터프레임 생성
+        if slot_type == 'shopping':
+            data = {
+                '슬롯명': [slot.slot_name for slot in slots],
+                '대행사': [slot.user.company_name for slot in slots],
+                '스토어 타입': [slot.store_type for slot in slots],
+                '상품 ID': [slot.product_id for slot in slots],
+                '상품명': [slot.product_name for slot in slots],
+                '키워드': [slot.keywords for slot in slots],
+                '가격': [slot.price for slot in slots],
+                '할인가': [slot.sale_price for slot in slots],
+                '시작일': [slot.start_date for slot in slots],
+                '종료일': [slot.end_date for slot in slots],
+                '입찰방식': [slot.bid_type for slot in slots],
+                '상태': [slot.status for slot in slots],
+                '슬롯 단가': [getattr(slot, 'slot_price', None) for slot in slots]
+            }
+        elif slot_type == 'place':
+            data = {
+                '슬롯명': [slot.slot_name for slot in slots],
+                '대행사': [slot.user.company_name for slot in slots],
+                '장소명': [slot.place_name for slot in slots],
+                '주소': [slot.address for slot in slots],
+                '업종분류': [slot.business_type for slot in slots],
+                '장소 ID': [slot.place_id for slot in slots],
+                '시작일': [slot.start_date for slot in slots],
+                '종료일': [slot.end_date for slot in slots],
+                '마감일': [slot.deadline_date for slot in slots],
+                '상태': [slot.status for slot in slots],
+                '슬롯 단가': [getattr(slot, 'slot_price', None) for slot in slots]
+            }
+        else:  # 'all'인 경우
+            # 쇼핑과 플레이스 데이터를 모두 포함하는 엑셀 생성 (시트를 나눠서)
+            writer = pd.ExcelWriter(os.path.join(app.config['UPLOAD_FOLDER'], 'slots_export.xlsx'), engine='openpyxl')
+            
+            # 쇼핑 슬롯 시트
+            shopping_data = {
+                '슬롯명': [slot.slot_name for slot in shopping_slots],
+                '대행사': [slot.user.company_name for slot in shopping_slots],
+                '스토어 타입': [slot.store_type for slot in shopping_slots],
+                '상품 ID': [slot.product_id for slot in shopping_slots],
+                '상품명': [slot.product_name for slot in shopping_slots],
+                '키워드': [slot.keywords for slot in shopping_slots],
+                '가격': [slot.price for slot in shopping_slots],
+                '할인가': [slot.sale_price for slot in shopping_slots],
+                '시작일': [slot.start_date for slot in shopping_slots],
+                '종료일': [slot.end_date for slot in shopping_slots],
+                '입찰방식': [slot.bid_type for slot in shopping_slots],
+                '상태': [slot.status for slot in shopping_slots],
+                '슬롯 단가': [getattr(slot, 'slot_price', None) for slot in shopping_slots]
+            }
+            
+            # 플레이스 슬롯 시트
+            place_data = {
+                '슬롯명': [slot.slot_name for slot in place_slots],
+                '대행사': [slot.user.company_name for slot in place_slots],
+                '장소명': [slot.place_name for slot in place_slots],
+                '주소': [slot.address for slot in place_slots],
+                '업종분류': [slot.business_type for slot in place_slots],
+                '장소 ID': [slot.place_id for slot in place_slots],
+                '시작일': [slot.start_date for slot in place_slots],
+                '종료일': [slot.end_date for slot in place_slots],
+                '마감일': [slot.deadline_date for slot in place_slots],
+                '상태': [slot.status for slot in place_slots],
+                '슬롯 단가': [getattr(slot, 'slot_price', None) for slot in place_slots]
+            }
+            
+            pd.DataFrame(shopping_data).to_excel(writer, sheet_name='쇼핑 슬롯', index=False)
+            pd.DataFrame(place_data).to_excel(writer, sheet_name='플레이스 슬롯', index=False)
+            
+            writer.close()
+            
+            # 다운로드 제공
+            return send_file(
+                os.path.join(app.config['UPLOAD_FOLDER'], 'slots_export.xlsx'),
+                as_attachment=True,
+                download_name=f'전체_슬롯_목록_{datetime.now().strftime("%Y%m%d")}.xlsx',
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+    
+    # 데이터프레임 생성 및 엑셀 파일 제공
+    df = pd.DataFrame(data)
+    
+    # 임시 파일로 저장
+    temp_file_path = os.path.join(app.config['UPLOAD_FOLDER'], f'{slot_type}_slots_export.xlsx')
+    df.to_excel(temp_file_path, index=False)
+    
+    # 다운로드 제공
+    file_name = f'{slot_type}_슬롯_{"양식" if is_template else "목록"}_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    
+    return send_file(
+        temp_file_path,
+        as_attachment=True,
+        download_name=file_name,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 @app.route('/distributor/approvals')
 @distributor_required
 def distributor_approvals():
