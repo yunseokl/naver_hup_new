@@ -285,19 +285,14 @@
                 <input type="hidden" name="slot_type" value="{{ slot_type }}">
                 <div class="modal-body bg-dark text-white">
                     <div class="mb-3">
-                        <label for="agency_id" class="form-label">대행사 *</label>
-                        <select class="form-select bg-dark text-white" id="agency_id" name="agency_id" required>
-                            {% if agencies %}
-                                {% for agency in agencies %}
-                                <option value="{{ agency.id }}" {% if loop.first %}selected{% endif %}>{{ agency.company_name }}</option>
-                                {% endfor %}
-                            {% else %}
-                                <option value="" disabled>소속 대행사가 없습니다</option>
-                            {% endif %}
+                        <label for="agency_id" class="form-label">대행사</label>
+                        <select class="form-select bg-dark text-white" id="agency_id" name="agency_id">
+                            <option value="">직접 사용 (총판용)</option>
+                            {% for agency in agencies %}
+                            <option value="{{ agency.id }}">{{ agency.company_name }}</option>
+                            {% endfor %}
                         </select>
-                        {% if not agencies %}
-                        <small class="text-danger">대행사를 먼저 추가해주세요</small>
-                        {% endif %}
+                        <small class="text-muted">대행사를 선택하지 않으면 총판 자체 슬롯으로 할당됩니다.</small>
                     </div>
                     
                     <div class="mb-3">

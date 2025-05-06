@@ -506,10 +506,16 @@ def create_distributor_slot():
     slot_sub_type = request.form.get('slot_sub_type')
     notes = request.form.get('notes', '')
     
-    # 대행사 확인
-    agency = User.query.get_or_404(agency_id)
-    if agency.parent_id != current_user.id:
-        abort(403)  # 자신의 대행사가 아닌 경우 접근 불가
+    # 대행사 또는 총판 자신용 슬롯 구분
+    if agency_id and agency_id.strip():
+        # 대행사 확인
+        agency = User.query.get_or_404(agency_id)
+        if agency.parent_id != current_user.id:
+            abort(403)  # 자신의 대행사가 아닌 경우 접근 불가
+        assigned_user_id = agency.id
+    else:
+        # 총판 자신용 슬롯
+        assigned_user_id = current_user.id
     
     # 날짜 처리
     start_date = request.form.get('start_date')
@@ -526,12 +532,15 @@ def create_distributor_slot():
         
         for i in range(slot_quantity):
             # 슬롯 이름 설정
-            slot_name = f"{agency.company_name} {slot_type.capitalize()} 슬롯 {datetime.now().strftime('%Y%m%d')}-{i+1}"
+            user = User.query.get(assigned_user_id)
+            owner_name = user.company_name if user else current_user.company_name
+                
+            slot_name = f"{owner_name} {slot_type.capitalize()} 슬롯 {datetime.now().strftime('%Y%m%d')}-{i+1}"
             
             if slot_type == 'shopping':
-                # 쇼핑 슬롯 생성 (빈 슬롯, 대행사가 정보 입력 예정)
+                # 쇼핑 슬롯 생성 (빈 슬롯, 사용자가 정보 입력 예정)
                 slot = ShoppingSlot(
-                    user_id=agency_id,
+                    user_id=assigned_user_id,
                     slot_name=slot_name,
                     start_date=start_date,
                     end_date=end_date,
@@ -541,9 +550,9 @@ def create_distributor_slot():
                     notes=notes
                 )
             else:
-                # 플레이스 슬롯 생성 (빈 슬롯, 대행사가 정보 입력 예정)
+                # 플레이스 슬롯 생성 (빈 슬롯, 사용자가 정보 입력 예정)
                 slot = PlaceSlot(
-                    user_id=agency_id,
+                    user_id=assigned_user_id,
                     slot_name=slot_name,
                     start_date=start_date,
                     end_date=end_date,
@@ -574,10 +583,16 @@ def upload_distributor_slots():
     agency_id = request.form.get('agency_id')
     slot_price = request.form.get('slot_price')
     
-    # 대행사 확인
-    agency = User.query.get_or_404(agency_id)
-    if agency.parent_id != current_user.id:
-        abort(403)  # 자신의 대행사가 아닌 경우 접근 불가
+    # 대행사 또는 총판 자신용 슬롯 구분
+    if agency_id and agency_id.strip():
+        # 대행사 확인
+        agency = User.query.get_or_404(agency_id)
+        if agency.parent_id != current_user.id:
+            abort(403)  # 자신의 대행사가 아닌 경우 접근 불가
+        assigned_user_id = agency.id
+    else:
+        # 총판 자신용 슬롯
+        assigned_user_id = current_user.id
     
     if 'file' not in request.files:
         flash('파일이 제공되지 않았습니다.', 'danger')
@@ -610,7 +625,7 @@ def upload_distributor_slots():
                 if slot_type == 'shopping':
                     # 쇼핑 슬롯 생성
                     slot = ShoppingSlot(
-                        user_id=agency_id,
+                        user_id=assigned_user_id,
                         slot_name=row.get('슬롯명', ''),
                         store_type=row.get('스토어 타입', ''),
                         product_id=row.get('상품 ID', ''),
@@ -627,7 +642,7 @@ def upload_distributor_slots():
                 else:
                     # 플레이스 슬롯 생성
                     slot = PlaceSlot(
-                        user_id=agency_id,
+                        user_id=assigned_user_id,
                         slot_name=row.get('슬롯명', ''),
                         place_name=row.get('장소명', ''),
                         address=row.get('주소', ''),
