@@ -986,10 +986,12 @@ def agency_dashboard():
     pending_shopping_slots = current_user.shopping_slots.filter_by(status='pending').count()
     approved_shopping_slots = current_user.shopping_slots.filter_by(status='approved').count()
     rejected_shopping_slots = current_user.shopping_slots.filter_by(status='rejected').count()
+    live_shopping_slots = current_user.shopping_slots.filter_by(status='live').count()
     
     pending_place_slots = current_user.place_slots.filter_by(status='pending').count()
     approved_place_slots = current_user.place_slots.filter_by(status='approved').count()
     rejected_place_slots = current_user.place_slots.filter_by(status='rejected').count()
+    live_place_slots = current_user.place_slots.filter_by(status='live').count()
     
     # 슬롯 할당량 정보
     slot_quota = current_user.quota
@@ -1015,9 +1017,11 @@ def agency_dashboard():
                           pending_shopping_slots=pending_shopping_slots,
                           approved_shopping_slots=approved_shopping_slots,
                           rejected_shopping_slots=rejected_shopping_slots,
+                          live_shopping_slots=live_shopping_slots,
                           pending_place_slots=pending_place_slots,
                           approved_place_slots=approved_place_slots,
                           rejected_place_slots=rejected_place_slots,
+                          live_place_slots=live_place_slots,
                           slot_quota=slot_quota,
                           quota_requests=quota_requests,
                           pending_quota_requests=pending_quota_requests)
