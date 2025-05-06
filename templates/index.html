@@ -3,44 +3,118 @@
 {% block title %}홈{% endblock %}
 
 {% block content %}
-<div class="row align-items-center g-5 py-5">
-    <div class="col-lg-6">
-        <h1 class="display-5 fw-bold lh-1 mb-3">네이버 데이터 입력 시스템</h1>
-        <p class="lead">네이버 쇼핑과 플레이스 데이터를 쉽게 입력하고 관리하세요. 엑셀 파일을 업로드하거나 수동으로 데이터를 입력할 수 있습니다.</p>
-        <div class="d-grid gap-2 d-md-flex justify-content-md-start mt-4">
-            <a href="{{ url_for('shopping') }}" class="btn btn-primary btn-lg px-4 me-md-2">쇼핑 데이터 입력</a>
-            <a href="{{ url_for('place') }}" class="btn btn-outline-secondary btn-lg px-4">플레이스 데이터 입력</a>
-        </div>
+<div class="row py-5">
+    <div class="col-12 text-center mb-5">
+        <h1 class="display-4 fw-bold mb-3">네이버 광고 데이터 관리 시스템</h1>
+        <p class="lead">네이버 쇼핑 슬롯과 플레이스 슬롯 데이터를 관리하고 분석하는 통합 플랫폼입니다.</p>
     </div>
-    <div class="col-lg-6">
-        <div class="card bg-dark-subtle">
+</div>
+
+<div class="row mb-5">
+    <div class="col-md-6">
+        <div class="card h-100 border-primary">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">
+                    <i data-feather="shopping-bag" class="me-2"></i> 네이버 쇼핑 슬롯
+                </h4>
+            </div>
             <div class="card-body">
-                <h5 class="card-title">기능 소개</h5>
-                <ul class="list-group list-group-flush mt-3">
-                    <li class="list-group-item bg-transparent">
-                        <i data-feather="shopping-bag" class="me-2"></i> 네이버 쇼핑 데이터 입력 및 관리
+                <p class="card-text">
+                    스마트스토어 및 쇼핑 광고 슬롯을 관리하고 분석합니다.
+                    각 제품의 노출 및 클릭 데이터를 확인하고 최적화할 수 있습니다.
+                </p>
+                <ul class="list-group list-group-flush mb-4">
+                    <li class="list-group-item d-flex align-items-center">
+                        <i data-feather="check" class="text-success me-2"></i> 엑셀 일괄 업로드
                     </li>
-                    <li class="list-group-item bg-transparent">
-                        <i data-feather="map-pin" class="me-2"></i> 네이버 플레이스 데이터 입력 및 관리
+                    <li class="list-group-item d-flex align-items-center">
+                        <i data-feather="check" class="text-success me-2"></i> 슬롯 추가/삭제/편집
                     </li>
-                    <li class="list-group-item bg-transparent">
-                        <i data-feather="file" class="me-2"></i> 엑셀 파일 일괄 업로드 지원
-                    </li>
-                    <li class="list-group-item bg-transparent">
-                        <i data-feather="database" class="me-2"></i> 데이터베이스 저장 및 조회
+                    <li class="list-group-item d-flex align-items-center">
+                        <i data-feather="check" class="text-success me-2"></i> 필터링 및 검색
                     </li>
                 </ul>
+                <a href="{{ url_for('shopping') }}" class="btn btn-primary w-100">
+                    쇼핑 슬롯 관리 바로가기
+                </a>
+            </div>
+            <div class="card-footer bg-transparent">
+                <small class="text-muted">
+                    <i data-feather="info" class="me-1" style="width: 14px; height: 14px;"></i>
+                    첫 번째 이미지의 형식대로 데이터를 관리합니다.
+                </small>
             </div>
         </div>
-        <div class="card mt-4 bg-dark-subtle">
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100 border-secondary">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="card-title mb-0">
+                    <i data-feather="map-pin" class="me-2"></i> 네이버 플레이스 슬롯
+                </h4>
+            </div>
             <div class="card-body">
-                <h5 class="card-title">엑셀 파일 업로드 안내</h5>
                 <p class="card-text">
-                    <small>
-                        엑셀 파일의 첫 번째 열은 필수 입력 항목입니다. 쇼핑의 경우 제품명, 플레이스의 경우 장소명이 이에 해당합니다.
-                        다른 열은 각 필드에 맞게 자동으로 매핑됩니다.
-                    </small>
+                    장소 및 업종별 광고 슬롯을 관리하고 분석합니다.
+                    키워드별 노출/클릭 데이터를 확인하고 최적화할 수 있습니다.
                 </p>
+                <ul class="list-group list-group-flush mb-4">
+                    <li class="list-group-item d-flex align-items-center">
+                        <i data-feather="check" class="text-success me-2"></i> 엑셀 일괄 업로드
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <i data-feather="check" class="text-success me-2"></i> 슬롯 활성화/비활성화
+                    </li>
+                    <li class="list-group-item d-flex align-items-center">
+                        <i data-feather="check" class="text-success me-2"></i> 업종별 필터링
+                    </li>
+                </ul>
+                <a href="{{ url_for('place') }}" class="btn btn-secondary w-100">
+                    플레이스 슬롯 관리 바로가기
+                </a>
+            </div>
+            <div class="card-footer bg-transparent">
+                <small class="text-muted">
+                    <i data-feather="info" class="me-1" style="width: 14px; height: 14px;"></i>
+                    두 번째 이미지의 형식대로 데이터를 관리합니다.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-5">
+    <div class="col-12">
+        <div class="card bg-dark text-white">
+            <div class="card-body">
+                <h4 class="card-title">
+                    <i data-feather="upload-cloud" class="me-2"></i> 엑셀 파일 업로드 안내
+                </h4>
+                <p class="card-text">
+                    원하는 타입의 엑셀 파일을 업로드하여 데이터를 일괄 처리할 수 있습니다.
+                    각 섹션에서 제공하는 양식에 맞게 데이터를 작성하고 업로드하세요.
+                </p>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mt-3">
+                            <h5><i data-feather="file-text" class="me-2"></i> 쇼핑 슬롯 엑셀 형식</h5>
+                            <ul class="list-unstyled ps-4">
+                                <li><small>• 스토어타입, 광고품ID, 쇼핑캠페인ID 등 포함</small></li>
+                                <li><small>• 시작일, 종료일, 입찰방식, 타겟팅 정보 포함</small></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mt-3">
+                            <h5><i data-feather="file-text" class="me-2"></i> 플레이스 슬롯 엑셀 형식</h5>
+                            <ul class="list-unstyled ps-4">
+                                <li><small>• 광고주ID, 업종분류 코드, 업종분류명 포함</small></li>
+                                <li><small>• 상태 정보, 시작일/종료일/마감일 포함</small></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
