@@ -904,6 +904,7 @@ def create_distributor_slot():
     notes = request.form.get('notes', '')
     
     # 대행사 또는 총판 자신용 슬롯 구분
+    is_for_distributor = False  # 총판 자신용 슬롯인지 여부
     if agency_id and agency_id.strip():
         # 대행사 확인
         agency = User.query.get_or_404(agency_id)
@@ -913,6 +914,7 @@ def create_distributor_slot():
     else:
         # 총판 자신용 슬롯
         assigned_user_id = current_user.id
+        is_for_distributor = True
     
     # 날짜 처리
     start_date = request.form.get('start_date')
@@ -926,6 +928,7 @@ def create_distributor_slot():
     try:
         # 할당된 슬롯 수 만큼 빈 슬롯 생성
         created_slots = 0
+        created_approvals = 0
         
         for i in range(slot_quantity):
             # 슬롯 이름 설정
@@ -934,38 +937,56 @@ def create_distributor_slot():
                 
             slot_name = f"{owner_name} {slot_type.capitalize()} 슬롯 {datetime.now().strftime('%Y%m%d')}-{i+1}"
             
+            # 총판용 슬롯 상태: 바로 'empty'가 아니라 'pending'으로 생성
+            slot_status = 'pending' if is_for_distributor else 'empty'
+            
             if slot_type == 'shopping':
-                # 쇼핑 슬롯 생성 (빈 슬롯, 사용자가 정보 입력 예정)
+                # 쇼핑 슬롯 생성
                 slot = ShoppingSlot(
                     user_id=assigned_user_id,
                     slot_name=slot_name,
                     start_date=start_date,
                     end_date=end_date,
-                    status='empty',  # 빈 슬롯으로 생성
+                    status=slot_status,  # 총판용은 pending으로, 대행사용은 empty로
                     slot_price=slot_price,
                     slot_type=slot_sub_type or 'standard',  # standard 또는 premium
                     notes=notes
                 )
             else:
-                # 플레이스 슬롯 생성 (빈 슬롯, 사용자가 정보 입력 예정)
+                # 플레이스 슬롯 생성
                 slot = PlaceSlot(
                     user_id=assigned_user_id,
                     slot_name=slot_name,
                     start_date=start_date,
                     end_date=end_date,
-                    status='empty',  # 빈 슬롯으로 생성
+                    status=slot_status,  # 총판용은 pending으로, 대행사용은 empty로
                     slot_price=slot_price,
                     slot_type=slot_sub_type or 'search',  # search 또는 save
                     notes=notes
                 )
             
             db.session.add(slot)
+            db.session.flush()  # ID 생성을 위한 플러시
             created_slots += 1
+            
+            # 총판 자신용 슬롯이면 승인 요청 생성 (어드민에게 요청)
+            if is_for_distributor:
+                approval = SlotApproval(
+                    requester_id=current_user.id,
+                    shopping_slot_id=slot.id if slot_type == 'shopping' else None,
+                    place_slot_id=slot.id if slot_type == 'place' else None,
+                    approval_type='create'
+                )
+                db.session.add(approval)
+                created_approvals += 1
         
         # 슬롯 저장
         db.session.commit()
         
-        flash(f'{created_slots}개의 {slot_type} 슬롯이 성공적으로 생성되었습니다.', 'success')
+        if is_for_distributor:
+            flash(f'{created_slots}개의 {slot_type} 슬롯 요청이 생성되었고, 관리자 승인 대기 중입니다.', 'success')
+        else:
+            flash(f'{created_slots}개의 {slot_type} 슬롯이 성공적으로 생성되었습니다.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'슬롯 생성 중 오류가 발생했습니다: {str(e)}', 'danger')
@@ -981,6 +1002,7 @@ def upload_distributor_slots():
     slot_price = request.form.get('slot_price')
     
     # 대행사 또는 총판 자신용 슬롯 구분
+    is_for_distributor = False  # 총판 자신용 슬롯인지 여부
     if agency_id and agency_id.strip():
         # 대행사 확인
         agency = User.query.get_or_404(agency_id)
@@ -990,6 +1012,7 @@ def upload_distributor_slots():
     else:
         # 총판 자신용 슬롯
         assigned_user_id = current_user.id
+        is_for_distributor = True
     
     if 'file' not in request.files:
         flash('파일이 제공되지 않았습니다.', 'danger')
@@ -1016,6 +1039,10 @@ def upload_distributor_slots():
         
         success_count = 0
         error_count = 0
+        approval_count = 0
+        
+        # 총판용 슬롯 상태: 바로 'approved'가 아니라 'pending'으로 생성
+        slot_status = 'pending' if is_for_distributor else 'approved'
         
         for _, row in df.iterrows():
             try:
@@ -1033,7 +1060,7 @@ def upload_distributor_slots():
                         start_date=pd.to_datetime(row.get('시작일')).date() if pd.notna(row.get('시작일')) else None,
                         end_date=pd.to_datetime(row.get('종료일')).date() if pd.notna(row.get('종료일')) else None,
                         bid_type=row.get('입찰방식', ''),
-                        status='approved',  # 총판이 생성하므로 바로 승인 상태
+                        status=slot_status,  # 총판용은 pending으로, 대행사용은 approved로
                         slot_price=row.get('슬롯 단가', slot_price)
                     )
                 else:
@@ -1048,19 +1075,34 @@ def upload_distributor_slots():
                         start_date=pd.to_datetime(row.get('시작일')).date() if pd.notna(row.get('시작일')) else None,
                         end_date=pd.to_datetime(row.get('종료일')).date() if pd.notna(row.get('종료일')) else None,
                         deadline_date=pd.to_datetime(row.get('마감일')).date() if pd.notna(row.get('마감일')) else None,
-                        status='approved',  # 총판이 생성하므로 바로 승인 상태
+                        status=slot_status,  # 총판용은 pending으로, 대행사용은 approved로
                         slot_price=row.get('슬롯 단가', slot_price)
                     )
                 
                 db.session.add(slot)
+                db.session.flush()  # ID 생성을 위한 플러시
                 success_count += 1
+                
+                # 총판 자신용 슬롯이면 승인 요청 생성 (어드민에게 요청)
+                if is_for_distributor:
+                    approval = SlotApproval(
+                        requester_id=current_user.id,
+                        shopping_slot_id=slot.id if slot_type == 'shopping' else None,
+                        place_slot_id=slot.id if slot_type == 'place' else None,
+                        approval_type='create'
+                    )
+                    db.session.add(approval)
+                    approval_count += 1
+                
             except Exception as e:
                 error_count += 1
                 logger.error(f"Error processing row: {e}")
         
         db.session.commit()
         
-        if success_count > 0:
+        if is_for_distributor:
+            flash(f'{success_count}개의 {slot_type} 슬롯 요청이 생성되었고, {approval_count}개의 승인 요청이 관리자에게 제출되었습니다.', 'success')
+        else:
             flash(f'{success_count}개의 {slot_type} 슬롯이 성공적으로 등록되었습니다.', 'success')
         
         if error_count > 0:
@@ -1244,19 +1286,27 @@ def distributor_approvals():
     # 이 총판에 속한 대행사들의 ID 리스트
     agency_ids = [agency.id for agency in current_user.agencies]
     
-    approvals = SlotApproval.query.filter(
+    # 1. 대행사들로부터의 승인 요청
+    agency_approvals = SlotApproval.query.filter(
         SlotApproval.status == 'pending',
         SlotApproval.requester_id.in_(agency_ids)
     ).all()
     
-    # 슬롯 할당량 요청 정보
+    # 2. 총판 자신의 슬롯에 대한 승인 요청 (관리자만 승인 가능)
+    distributor_approvals = SlotApproval.query.filter(
+        SlotApproval.status == 'pending',
+        SlotApproval.requester_id == current_user.id  # 총판 본인이 요청자
+    ).all()
+    
+    # 3. 슬롯 할당량 요청 정보
     quota_requests = SlotQuotaRequest.query.filter(
         SlotQuotaRequest.status == 'pending',
         SlotQuotaRequest.requester_id.in_(agency_ids)
     ).all()
     
     return render_template('distributor/approvals.html', 
-                          approvals=approvals, 
+                          agency_approvals=agency_approvals,
+                          distributor_approvals=distributor_approvals,
                           quota_requests=quota_requests)
 
 @app.route('/distributor/approve-quota/<int:request_id>', methods=['POST'])

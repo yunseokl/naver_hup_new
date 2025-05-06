@@ -154,13 +154,13 @@
                 </div>
             </div>
             
-            <!-- 슬롯 승인 요청 섹션 -->
-            <div class="card">
+            <!-- 대행사로부터의 슬롯 승인 요청 섹션 -->
+            <div class="card mb-4">
                 <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">슬롯 승인 요청</h5>
+                    <h5 class="mb-0">대행사 슬롯 승인 요청</h5>
                 </div>
                 <div class="card-body p-0">
-                    {% if approvals %}
+                    {% if agency_approvals %}
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
                             <thead class="table-light">
@@ -174,7 +174,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for approval in approvals %}
+                                {% for approval in agency_approvals %}
                                 <tr>
                                     <td>{{ approval.requester.company_name }}</td>
                                     <td>
@@ -214,7 +214,68 @@
                     </div>
                     {% else %}
                     <div class="p-4 text-center">
-                        <p class="mb-0">슬롯 승인 요청이 없습니다.</p>
+                        <p class="mb-0">대행사 슬롯 승인 요청이 없습니다.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- 총판 자신의 슬롯 승인 요청 섹션 -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">내 슬롯 승인 요청 현황</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if distributor_approvals %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>슬롯 유형</th>
+                                    <th>슬롯 이름</th>
+                                    <th>요청 유형</th>
+                                    <th>요청일</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for approval in distributor_approvals %}
+                                <tr>
+                                    <td>
+                                        {% if approval.slot_type == 'shopping' %}
+                                            쇼핑
+                                        {% else %}
+                                            플레이스
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if approval.slot_type == 'shopping' %}
+                                            {{ approval.shopping_slot.slot_name }}
+                                        {% else %}
+                                            {{ approval.place_slot.slot_name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if approval.approval_type == 'create' %}
+                                            <span class="badge bg-success">생성</span>
+                                        {% elif approval.approval_type == 'update' %}
+                                            <span class="badge bg-info">수정</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">삭제</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ approval.requested_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <span class="badge bg-warning">관리자 승인 대기중</span>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="p-4 text-center">
+                        <p class="mb-0">대기중인 내 슬롯 승인 요청이 없습니다.</p>
                     </div>
                     {% endif %}
                 </div>
