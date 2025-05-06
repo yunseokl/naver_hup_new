@@ -8,5 +8,8 @@ logging.basicConfig(level=logging.DEBUG)
 # Make sure the uploads directory exists
 os.makedirs('uploads', exist_ok=True)
 
+# Make sure static/img directory exists
+os.makedirs('static/img', exist_ok=True)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

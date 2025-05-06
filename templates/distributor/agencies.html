@@ -1,0 +1,341 @@
+{% extends "layout.html" %}
+
+{% block title %}대행사 관리 - 네이버 광고 슬롯 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i data-feather="users" class="me-2"></i> 대행사 관리</h2>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#inviteAgencyModal">
+        <i data-feather="user-plus" class="me-1"></i> 대행사 초대
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">소속 대행사 목록</h5>
+            <div class="input-group" style="width: 300px;">
+                <input type="text" class="form-control" placeholder="대행사 검색..." id="agencySearchInput">
+                <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                    <i data-feather="search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>회사명</th>
+                        <th>사용자명</th>
+                        <th>이메일</th>
+                        <th>연락처</th>
+                        <th>쇼핑 슬롯</th>
+                        <th>플레이스 슬롯</th>
+                        <th>승인 대기</th>
+                        <th>가입일</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if agencies %}
+                        {% for agency in agencies %}
+                        <tr>
+                            <td>{{ agency.id }}</td>
+                            <td>{{ agency.company_name }}</td>
+                            <td>{{ agency.username }}</td>
+                            <td>{{ agency.email }}</td>
+                            <td>{{ agency.phone }}</td>
+                            <td>{{ agency.shopping_slots.count() }}</td>
+                            <td>{{ agency.place_slots.count() }}</td>
+                            <td>
+                                {% set pending = agency.approvals_requested.filter_by(status='pending').count() %}
+                                {% if pending > 0 %}
+                                <span class="badge bg-warning">{{ pending }}</span>
+                                {% else %}
+                                <span class="badge bg-secondary">0</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ agency.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <span class="badge {% if agency.is_active %}bg-success{% else %}bg-danger{% endif %}">
+                                    {{ '활성' if agency.is_active else '비활성' }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary view-agency" data-id="{{ agency.id }}">
+                                        <i data-feather="eye"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger toggle-status" data-id="{{ agency.id }}" data-status="{{ agency.is_active }}">
+                                        <i data-feather="{{ 'x-circle' if agency.is_active else 'check-circle' }}"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="11" class="text-center py-4">
+                                소속 대행사가 없습니다. 새 대행사를 초대하세요.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 대행사 상세 정보 모달 -->
+<div class="modal fade" id="agencyDetailModal" tabindex="-1" aria-labelledby="agencyDetailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="agencyDetailModalLabel">대행사 상세 정보</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="mb-3">기본 정보</h6>
+                        <table class="table table-striped">
+                            <tr>
+                                <th>회사명</th>
+                                <td id="detail_company_name"></td>
+                            </tr>
+                            <tr>
+                                <th>사용자명</th>
+                                <td id="detail_username"></td>
+                            </tr>
+                            <tr>
+                                <th>이메일</th>
+                                <td id="detail_email"></td>
+                            </tr>
+                            <tr>
+                                <th>연락처</th>
+                                <td id="detail_phone"></td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="mb-3">통계 정보</h6>
+                        <table class="table table-striped">
+                            <tr>
+                                <th>총 슬롯</th>
+                                <td id="detail_total_slots"></td>
+                            </tr>
+                            <tr>
+                                <th>쇼핑 슬롯</th>
+                                <td id="detail_shopping_slots"></td>
+                            </tr>
+                            <tr>
+                                <th>플레이스 슬롯</th>
+                                <td id="detail_place_slots"></td>
+                            </tr>
+                            <tr>
+                                <th>승인 대기</th>
+                                <td id="detail_pending_approvals"></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <h6 class="mt-4 mb-3">최근 승인 요청</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>유형</th>
+                                <th>슬롯명</th>
+                                <th>요청 종류</th>
+                                <th>요청일</th>
+                                <th>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent_approvals_body">
+                            <tr>
+                                <td colspan="6" class="text-center">데이터를 불러오는 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                <a href="#" class="btn btn-primary" id="viewApprovalsBtn">
+                    <i data-feather="list" class="me-1"></i> 모든 승인 요청 보기
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 대행사 초대 모달 -->
+<div class="modal fade" id="inviteAgencyModal" tabindex="-1" aria-labelledby="inviteAgencyModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteAgencyModalLabel">대행사 초대</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="inviteAgencyForm">
+                    <div class="mb-3">
+                        <label for="invite_email" class="form-label required-field">이메일</label>
+                        <input type="email" class="form-control" id="invite_email" name="email" required>
+                        <div class="form-text">초대장이 이 이메일로 발송됩니다.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="invite_company_name" class="form-label required-field">회사명</label>
+                        <input type="text" class="form-control" id="invite_company_name" name="company_name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="invite_message" class="form-label">초대 메시지</label>
+                        <textarea class="form-control" id="invite_message" name="message" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="sendInviteBtn">초대장 발송</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 상태 변경 확인 모달 -->
+<div class="modal fade" id="toggleStatusModal" tabindex="-1" aria-labelledby="toggleStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="toggleStatusModalLabel">대행사 상태 변경</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>정말로 이 대행사의 상태를 <span id="status_action">비활성화</span>하시겠습니까?</p>
+                <p class="text-danger" id="status_warning">비활성화된 대행사는 로그인이 불가능합니다.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-danger" id="confirmToggleBtn">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 대행사 검색 기능
+        const searchInput = document.getElementById('agencySearchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        
+        searchBtn.addEventListener('click', function() {
+            const searchValue = searchInput.value.toLowerCase();
+            const tableRows = document.querySelectorAll('tbody tr');
+            
+            tableRows.forEach(row => {
+                const companyName = row.querySelector('td:nth-child(2)')?.textContent.toLowerCase() || '';
+                const username = row.querySelector('td:nth-child(3)')?.textContent.toLowerCase() || '';
+                const email = row.querySelector('td:nth-child(4)')?.textContent.toLowerCase() || '';
+                
+                if (companyName.includes(searchValue) || username.includes(searchValue) || email.includes(searchValue)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        // 대행사 상세 정보 모달
+        const viewButtons = document.querySelectorAll('.view-agency');
+        const agencyDetailModal = new bootstrap.Modal(document.getElementById('agencyDetailModal'));
+        
+        viewButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const agencyId = this.getAttribute('data-id');
+                
+                // AJAX로 대행사 상세 정보 가져오기
+                // 현재는 임시 데이터로 표시
+                document.getElementById('detail_company_name').textContent = '대행사 회사명';
+                document.getElementById('detail_username').textContent = '사용자명';
+                document.getElementById('detail_email').textContent = 'email@example.com';
+                document.getElementById('detail_phone').textContent = '010-1234-5678';
+                
+                document.getElementById('detail_total_slots').textContent = '10';
+                document.getElementById('detail_shopping_slots').textContent = '6';
+                document.getElementById('detail_place_slots').textContent = '4';
+                document.getElementById('detail_pending_approvals').textContent = '2';
+                
+                document.getElementById('viewApprovalsBtn').href = '#';  // 추후 실제 링크로 대체
+                
+                agencyDetailModal.show();
+            });
+        });
+        
+        // 대행사 초대 기능
+        const sendInviteBtn = document.getElementById('sendInviteBtn');
+        const inviteAgencyForm = document.getElementById('inviteAgencyForm');
+        const inviteAgencyModal = new bootstrap.Modal(document.getElementById('inviteAgencyModal'));
+        
+        sendInviteBtn.addEventListener('click', function() {
+            if (!inviteAgencyForm.checkValidity()) {
+                inviteAgencyForm.reportValidity();
+                return;
+            }
+            
+            const email = document.getElementById('invite_email').value;
+            const companyName = document.getElementById('invite_company_name').value;
+            
+            // AJAX로 초대 요청 전송
+            // 현재는 알림만 표시
+            alert(`${companyName}(${email})로 초대장이 발송되었습니다.`);
+            inviteAgencyModal.hide();
+        });
+        
+        // 대행사 상태 변경
+        const toggleButtons = document.querySelectorAll('.toggle-status');
+        const toggleStatusModal = new bootstrap.Modal(document.getElementById('toggleStatusModal'));
+        const confirmToggleBtn = document.getElementById('confirmToggleBtn');
+        let agencyIdToToggle = null;
+        let currentStatus = null;
+        
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                agencyIdToToggle = this.getAttribute('data-id');
+                currentStatus = this.getAttribute('data-status') === 'True';
+                
+                const statusAction = document.getElementById('status_action');
+                const statusWarning = document.getElementById('status_warning');
+                
+                if (currentStatus) {
+                    statusAction.textContent = '비활성화';
+                    statusWarning.textContent = '비활성화된 대행사는 로그인이 불가능합니다.';
+                    confirmToggleBtn.className = 'btn btn-danger';
+                } else {
+                    statusAction.textContent = '활성화';
+                    statusWarning.textContent = '활성화된 대행사는 시스템에 로그인하여 작업할 수 있습니다.';
+                    confirmToggleBtn.className = 'btn btn-success';
+                }
+                
+                toggleStatusModal.show();
+            });
+        });
+        
+        confirmToggleBtn.addEventListener('click', function() {
+            if (agencyIdToToggle) {
+                // AJAX로 상태 변경 요청
+                // 현재는 알림만 표시
+                alert(`대행사(ID: ${agencyIdToToggle}) 상태가 ${currentStatus ? '비활성화' : '활성화'}되었습니다.`);
+                toggleStatusModal.hide();
+            }
+        });
+    });
+</script>
+{% endblock %}

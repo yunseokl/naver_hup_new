@@ -1,13 +1,83 @@
 import os
 from datetime import datetime
 from app import db
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
 
-class ShoppingData(db.Model):
-    """네이버 쇼핑 데이터 모델"""
+# 사용자 역할 정의
+class Role(db.Model):
+    """사용자 역할 모델"""
     id = db.Column(db.Integer, primary_key=True)
-    # 이미지에 있는 필드에 맞춰 수정
-    select = db.Column(db.Boolean, default=False)  # 선택 여부
-    store_type = db.Column(db.String(100))  # 스마트스토어/쇼핑 
+    name = db.Column(db.String(50), unique=True, nullable=False)  # admin, distributor(총판), agency(대행사)
+    description = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    users = db.relationship('User', backref='role', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<Role {self.name}>'
+
+# 사용자 모델
+class User(UserMixin, db.Model):
+    """사용자 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    company_name = db.Column(db.String(100))  # 회사명
+    phone = db.Column(db.String(20))  # 연락처
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime)
+    
+    # 역할 관계
+    role_id = db.Column(db.Integer, db.ForeignKey('role.id'))
+    
+    # 총판인 경우, 관리하는 대행사 관계
+    parent_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    agencies = db.relationship('User', backref=db.backref('distributor', remote_side=[id]), lazy='dynamic')
+    
+    # 슬롯 관계
+    shopping_slots = db.relationship('ShoppingSlot', backref='user', lazy='dynamic')
+    place_slots = db.relationship('PlaceSlot', backref='user', lazy='dynamic')
+    
+    # 승인 요청 관계
+    approvals_requested = db.relationship('SlotApproval', foreign_keys='SlotApproval.requester_id', backref='requester', lazy='dynamic')
+    approvals_handled = db.relationship('SlotApproval', foreign_keys='SlotApproval.approver_id', backref='approver', lazy='dynamic')
+    
+    def __repr__(self):
+        return f'<User {self.username}>'
+    
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+    
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+    
+    def is_admin(self):
+        return self.role.name == 'admin'
+    
+    def is_distributor(self):
+        return self.role.name == 'distributor'
+    
+    def is_agency(self):
+        return self.role.name == 'agency'
+
+# 쇼핑 슬롯 모델
+class ShoppingSlot(db.Model):
+    """쇼핑 슬롯 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    is_selected = db.Column(db.Boolean, default=False)  # 선택 여부
+    
+    # 소유자 정보
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # 상태 정보
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, active, inactive
+    
+    # 슬롯 기본 정보
+    slot_name = db.Column(db.String(100), nullable=False)  # 슬롯 이름
+    store_type = db.Column(db.String(50))  # 스마트스토어/쇼핑 
     product_id = db.Column(db.String(100))  # 광고품ID
     shopping_campaign_id = db.Column(db.String(100))  # 쇼핑캠페인ID
     
@@ -17,54 +87,50 @@ class ShoppingData(db.Model):
     store_name = db.Column(db.String(100))  # 스토어명
     price = db.Column(db.Integer)  # 가격
     sale_price = db.Column(db.Integer)  # 세일가격
+    product_image_url = db.Column(db.String(255))  # 제품 이미지 URL
     
     # 성과 관련 정보
-    impressions = db.Column(db.String(50))  # 노출수 (예: "0 / 1,280")
-    amount = db.Column(db.String(50))  # 금액 (예: "1067000000")
+    impressions = db.Column(db.String(50))  # 노출수
+    clicks = db.Column(db.String(50))  # 클릭수
+    amount = db.Column(db.String(50))  # 금액
     
     # 날짜 정보
-    start_date = db.Column(db.String(50))  # 시작일 (예: "2025-05-29")
-    end_date = db.Column(db.String(50))  # 종료일 (예: "2025-05-29")
+    start_date = db.Column(db.Date)  # 시작일
+    end_date = db.Column(db.Date)  # 종료일
     
     # 기타 정보
-    bid_type = db.Column(db.String(50))  # 입찰방식 (예: "10원")
-    targeting = db.Column(db.String(20))  # 타겟팅 (예: "MC")
+    bid_type = db.Column(db.String(50))  # 입찰방식
+    targeting = db.Column(db.String(20))  # 타겟팅
     
+    # 파일 정보
     filename = db.Column(db.String(255))  # 업로드된 파일명
     original_filename = db.Column(db.String(255))  # 원래 파일명
+    
+    # 시스템 정보
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    
+    # 승인 관계
+    approvals = db.relationship('SlotApproval', backref='shopping_slot', lazy='dynamic', 
+                              foreign_keys='SlotApproval.shopping_slot_id')
     
     def __repr__(self):
-        return f'<ShoppingData {self.product_name}>'
-    
-    @classmethod
-    def from_dict(cls, data, filename=None, original_filename=None):
-        """딕셔너리에서 ShoppingData 객체 생성"""
-        return cls(
-            select=data.get('select', False),
-            store_type=data.get('store_type'),
-            product_id=data.get('product_id'),
-            shopping_campaign_id=data.get('shopping_campaign_id'),
-            product_name=data.get('product_name'),
-            keywords=data.get('keywords'),
-            store_name=data.get('store_name'),
-            price=data.get('price'),
-            sale_price=data.get('sale_price'),
-            impressions=data.get('impressions'),
-            amount=data.get('amount'),
-            start_date=data.get('start_date'),
-            end_date=data.get('end_date'),
-            bid_type=data.get('bid_type'),
-            targeting=data.get('targeting'),
-            filename=filename,
-            original_filename=original_filename
-        )
+        return f'<ShoppingSlot {self.slot_name}>'
 
-class PlaceData(db.Model):
-    """네이버 플레이스 데이터 모델"""
+# 플레이스 슬롯 모델
+class PlaceSlot(db.Model):
+    """플레이스 슬롯 모델"""
     id = db.Column(db.Integer, primary_key=True)
-    # 이미지에 있는 필드에 맞춰 수정
-    select = db.Column(db.Boolean, default=False)  # 선택 여부
+    is_selected = db.Column(db.Boolean, default=False)  # 선택 여부
+    
+    # 소유자 정보
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    
+    # 상태 정보
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, active, inactive
+    
+    # 슬롯 기본 정보
+    slot_name = db.Column(db.String(100), nullable=False)  # 슬롯 이름
     place_id = db.Column(db.String(100))  # 광고주ID
     business_category = db.Column(db.String(100))  # 업종분류 코드
     business_type = db.Column(db.String(100))  # 업종분류 명
@@ -74,44 +140,72 @@ class PlaceData(db.Model):
     address = db.Column(db.String(300))  # 주소
     
     # 수치 정보
-    impressions = db.Column(db.String(50))  # 노출수/클릭수 (예: "161 / 2,520")
+    impressions = db.Column(db.String(50))  # 노출수
+    clicks = db.Column(db.String(50))  # 클릭수
     cost = db.Column(db.String(50))  # 비용
     
     # 상태 정보
-    status = db.Column(db.String(100))  # 상태 (예: "심사중", "ON", "OFF")
+    operation_status = db.Column(db.String(100))  # 운영 상태 (예: "심사중", "ON", "OFF")
     status_reason = db.Column(db.String(100))  # 상태 이유
     status_detail = db.Column(db.String(255))  # 상태 상세 (예: "경쟁입찰(PCMB)")
     
     # 날짜 정보
-    start_date = db.Column(db.String(50))  # 시작일 (예: "2025-05-06")
-    end_date = db.Column(db.String(50))  # 종료일 (예: "2025-05-20")
-    deadline_date = db.Column(db.String(50))  # 마감일 (예: "2025-05-20T")
+    start_date = db.Column(db.Date)  # 시작일
+    end_date = db.Column(db.Date)  # 종료일
+    deadline_date = db.Column(db.Date)  # 마감일
     
+    # 파일 정보
     filename = db.Column(db.String(255))  # 업로드된 파일명
     original_filename = db.Column(db.String(255))  # 원래 파일명
+    
+    # 시스템 정보
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    
+    # 승인 관계
+    approvals = db.relationship('SlotApproval', backref='place_slot', lazy='dynamic',
+                              foreign_keys='SlotApproval.place_slot_id')
     
     def __repr__(self):
-        return f'<PlaceData {self.place_name}>'
+        return f'<PlaceSlot {self.slot_name}>'
+
+# 슬롯 승인 모델
+class SlotApproval(db.Model):
+    """슬롯 승인 요청 모델"""
+    id = db.Column(db.Integer, primary_key=True)
     
-    @classmethod
-    def from_dict(cls, data, filename=None, original_filename=None):
-        """딕셔너리에서 PlaceData 객체 생성"""
-        return cls(
-            select=data.get('select', False),
-            place_id=data.get('place_id'),
-            business_category=data.get('business_category'),
-            business_type=data.get('business_type'),
-            place_name=data.get('place_name'),
-            address=data.get('address'),
-            impressions=data.get('impressions'),
-            cost=data.get('cost'),
-            status=data.get('status'),
-            status_reason=data.get('status_reason'),
-            status_detail=data.get('status_detail'),
-            start_date=data.get('start_date'),
-            end_date=data.get('end_date'),
-            deadline_date=data.get('deadline_date'),
-            filename=filename,
-            original_filename=original_filename
-        )
+    # 관계 정보
+    requester_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 요청자 (대행사)
+    approver_id = db.Column(db.Integer, db.ForeignKey('user.id'))  # 승인자 (총판 또는 관리자)
+    
+    # 슬롯 정보 (둘 중 하나만 설정)
+    shopping_slot_id = db.Column(db.Integer, db.ForeignKey('shopping_slot.id'))
+    place_slot_id = db.Column(db.Integer, db.ForeignKey('place_slot.id'))
+    
+    # 승인 정보
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    approval_type = db.Column(db.String(20), nullable=False)  # create, update, delete
+    comment = db.Column(db.Text)  # 승인/거절 코멘트
+    
+    # 시간 정보
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime)  # 처리 시간
+    
+    def __repr__(self):
+        return f'<SlotApproval {self.id}: {self.status}>'
+    
+    @property
+    def slot_type(self):
+        if self.shopping_slot_id:
+            return 'shopping'
+        elif self.place_slot_id:
+            return 'place'
+        return None
+    
+    @property
+    def slot(self):
+        if self.shopping_slot_id:
+            return self.shopping_slot
+        elif self.place_slot_id:
+            return self.place_slot
+        return None
