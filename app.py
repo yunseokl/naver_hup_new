@@ -52,7 +52,7 @@ login_manager.login_message = '이 페이지에 접근하려면 로그인이 필
 login_manager.login_message_category = 'warning'
 
 # Import models after initializing db to avoid circular imports
-from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval
+from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval, SlotQuota, Settlement, SettlementItem
 
 # 초기화 함수를 생성합니다
 def create_tables_and_defaults():
@@ -115,6 +115,14 @@ def agency_or_above_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated_function
+
+def agency_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.is_agency():
             abort(403)
         return f(*args, **kwargs)
     return decorated_function
@@ -1584,3 +1592,285 @@ def success():
                           submission_data=submission_data)
 
 # 오류 핸들러는 위에 이미 정의되어 있음
+
+# 정산 관련 페이지
+
+@app.route('/admin/settlements')
+@login_required
+@admin_required
+def admin_settlements():
+    """관리자 정산 관리 페이지"""
+    settlements = Settlement.query.order_by(Settlement.created_at.desc()).all()
+    pending_settlements = Settlement.query.filter_by(status='pending').count()
+    
+    return render_template('admin/settlements.html', 
+                          settlements=settlements,
+                          pending_settlements=pending_settlements)
+
+
+@app.route('/admin/create_settlement', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def create_settlement():
+    """관리자 정산 생성 페이지"""
+    if request.method == 'POST':
+        user_id = request.form.get('user_id')
+        settlement_type = request.form.get('settlement_type')
+        period_start = datetime.strptime(request.form.get('period_start'), '%Y-%m-%d').date()
+        period_end = datetime.strptime(request.form.get('period_end'), '%Y-%m-%d').date()
+        notes = request.form.get('notes')
+        
+        # 정산 생성
+        settlement = Settlement(
+            user_id=user_id,
+            admin_id=current_user.id,
+            settlement_type=settlement_type,
+            period_start=period_start,
+            period_end=period_end,
+            status='pending',
+            notes=notes
+        )
+        db.session.add(settlement)
+        db.session.commit()  # ID를 생성하기 위해 먼저 커밋
+        
+        # 정산 항목 추가
+        if settlement_type == 'shopping':
+            slots = ShoppingSlot.query.filter(
+                ShoppingSlot.user_id == user_id,
+                ShoppingSlot.settlement_status == 'pending',
+                ShoppingSlot.status == 'approved',
+                ShoppingSlot.start_date >= period_start,
+                ShoppingSlot.end_date <= period_end
+            ).all()
+            
+            total_price = 0
+            admin_price = 0
+            
+            for slot in slots:
+                settlement_item = SettlementItem(
+                    settlement_id=settlement.id,
+                    shopping_slot_id=slot.id,
+                    slot_price=slot.slot_price or 0,
+                    admin_price=slot.admin_price or 0,
+                    settlement_price=slot.slot_price or 0
+                )
+                db.session.add(settlement_item)
+                
+                # 슬롯 정산 상태 업데이트
+                slot.settlement_status = 'in_progress'
+                
+                # 합계 계산
+                total_price += slot.slot_price or 0
+                admin_price += slot.admin_price or 0
+                
+            settlement.total_price = total_price
+            settlement.admin_price = admin_price
+            settlement.agency_price = total_price - admin_price
+            
+        elif settlement_type == 'place':
+            slots = PlaceSlot.query.filter(
+                PlaceSlot.user_id == user_id,
+                PlaceSlot.settlement_status == 'pending',
+                PlaceSlot.status == 'approved',
+                PlaceSlot.start_date >= period_start,
+                PlaceSlot.end_date <= period_end
+            ).all()
+            
+            total_price = 0
+            admin_price = 0
+            
+            for slot in slots:
+                settlement_item = SettlementItem(
+                    settlement_id=settlement.id,
+                    place_slot_id=slot.id,
+                    slot_price=slot.slot_price or 0,
+                    admin_price=slot.admin_price or 0,
+                    settlement_price=slot.slot_price or 0
+                )
+                db.session.add(settlement_item)
+                
+                # 슬롯 정산 상태 업데이트
+                slot.settlement_status = 'in_progress'
+                
+                # 합계 계산
+                total_price += slot.slot_price or 0
+                admin_price += slot.admin_price or 0
+                
+            settlement.total_price = total_price
+            settlement.admin_price = admin_price
+            settlement.agency_price = total_price - admin_price
+            
+        db.session.commit()
+        flash('정산이 생성되었습니다.', 'success')
+        return redirect(url_for('admin_settlements'))
+        
+    # GET 요청 처리
+    distributors = User.query.filter(User.role_id == 2).all()  # 총판 목록
+    agencies = User.query.filter(User.role_id == 3).all()      # 대행사 목록
+    
+    return render_template('admin/create_settlement.html',
+                          distributors=distributors,
+                          agencies=agencies)
+
+
+@app.route('/admin/settlement/<int:settlement_id>')
+@login_required
+@admin_required
+def admin_settlement_detail(settlement_id):
+    """관리자 정산 상세 페이지"""
+    settlement = Settlement.query.get_or_404(settlement_id)
+    
+    if settlement.settlement_type == 'shopping':
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
+            ShoppingSlot, SettlementItem.shopping_slot_id == ShoppingSlot.id
+        ).all()
+    else:
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
+            PlaceSlot, SettlementItem.place_slot_id == PlaceSlot.id
+        ).all()
+    
+    return render_template('admin/settlement_detail.html',
+                          settlement=settlement,
+                          items=items)
+
+
+@app.route('/admin/settlement/<int:settlement_id>/action', methods=['POST'])
+@login_required
+@admin_required
+def admin_settlement_action(settlement_id):
+    """관리자 정산 처리 액션"""
+    settlement = Settlement.query.get_or_404(settlement_id)
+    action = request.form.get('action')
+    
+    if action == 'complete':
+        # 정산 완료 처리
+        settlement.status = 'completed'
+        settlement.completed_at = datetime.utcnow()
+        
+        # 관련 슬롯들 정산 상태 업데이트
+        if settlement.settlement_type == 'shopping':
+            items = SettlementItem.query.filter_by(settlement_id=settlement_id).all()
+            for item in items:
+                if item.shopping_slot_id:
+                    slot = ShoppingSlot.query.get(item.shopping_slot_id)
+                    if slot:
+                        slot.settlement_status = 'completed'
+        else:
+            items = SettlementItem.query.filter_by(settlement_id=settlement_id).all()
+            for item in items:
+                if item.place_slot_id:
+                    slot = PlaceSlot.query.get(item.place_slot_id)
+                    if slot:
+                        slot.settlement_status = 'completed'
+                        
+        db.session.commit()
+        flash('정산이 완료 처리되었습니다.', 'success')
+        
+    elif action == 'cancel':
+        # 정산 취소 처리
+        settlement.status = 'cancelled'
+        
+        # 관련 슬롯들 정산 상태 원복
+        if settlement.settlement_type == 'shopping':
+            items = SettlementItem.query.filter_by(settlement_id=settlement_id).all()
+            for item in items:
+                if item.shopping_slot_id:
+                    slot = ShoppingSlot.query.get(item.shopping_slot_id)
+                    if slot:
+                        slot.settlement_status = 'pending'
+        else:
+            items = SettlementItem.query.filter_by(settlement_id=settlement_id).all()
+            for item in items:
+                if item.place_slot_id:
+                    slot = PlaceSlot.query.get(item.place_slot_id)
+                    if slot:
+                        slot.settlement_status = 'pending'
+                        
+        db.session.commit()
+        flash('정산이 취소되었습니다.', 'success')
+        
+    return redirect(url_for('admin_settlement_detail', settlement_id=settlement_id))
+
+
+@app.route('/distributor/settlements')
+@login_required
+@distributor_required
+def distributor_settlements():
+    """총판 정산 관리 페이지"""
+    # 총판에게 직접 관련된 정산
+    own_settlements = Settlement.query.filter_by(user_id=current_user.id).order_by(Settlement.created_at.desc()).all()
+    
+    # 총판이 관리하는 대행사에 관련된 정산들
+    agency_ids = [agency.id for agency in current_user.agencies]
+    agency_settlements = Settlement.query.filter(Settlement.user_id.in_(agency_ids)).order_by(Settlement.created_at.desc()).all()
+    
+    return render_template('distributor/settlements.html', 
+                          own_settlements=own_settlements,
+                          agency_settlements=agency_settlements)
+
+
+@app.route('/distributor/settlement/<int:settlement_id>')
+@login_required
+@distributor_required
+def distributor_settlement_detail(settlement_id):
+    """총판 정산 상세 페이지"""
+    settlement = Settlement.query.get_or_404(settlement_id)
+    
+    # 접근 권한 검증 (본인 또는 관리 중인 대행사의 정산만 볼 수 있음)
+    if settlement.user_id != current_user.id and settlement.user.parent_id != current_user.id:
+        abort(403)
+    
+    if settlement.settlement_type == 'shopping':
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
+            ShoppingSlot, SettlementItem.shopping_slot_id == ShoppingSlot.id
+        ).all()
+    else:
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
+            PlaceSlot, SettlementItem.place_slot_id == PlaceSlot.id
+        ).all()
+    
+    return render_template('distributor/settlement_detail.html',
+                          settlement=settlement,
+                          items=items)
+
+
+@app.route('/agency/settlements')
+@login_required
+@agency_required
+def agency_settlements():
+    """대행사 정산 페이지"""
+    settlements = Settlement.query.filter_by(user_id=current_user.id).order_by(Settlement.created_at.desc()).all()
+    
+    # 정산 통계
+    completed_count = Settlement.query.filter_by(user_id=current_user.id, status='completed').count()
+    pending_count = Settlement.query.filter_by(user_id=current_user.id, status='pending').count()
+    
+    return render_template('agency/settlements.html', 
+                          settlements=settlements,
+                          completed_count=completed_count,
+                          pending_count=pending_count)
+
+
+@app.route('/agency/settlement/<int:settlement_id>')
+@login_required
+@agency_required
+def agency_settlement_detail(settlement_id):
+    """대행사 정산 상세 페이지"""
+    settlement = Settlement.query.get_or_404(settlement_id)
+    
+    # 접근 권한 검증 (본인의 정산만 볼 수 있음)
+    if settlement.user_id != current_user.id:
+        abort(403)
+    
+    if settlement.settlement_type == 'shopping':
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
+            ShoppingSlot, SettlementItem.shopping_slot_id == ShoppingSlot.id
+        ).all()
+    else:
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
+            PlaceSlot, SettlementItem.place_slot_id == PlaceSlot.id
+        ).all()
+    
+    return render_template('agency/settlement_detail.html',
+                          settlement=settlement,
+                          items=items)

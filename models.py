@@ -45,6 +45,9 @@ class User(UserMixin, db.Model):
     approvals_requested = db.relationship('SlotApproval', foreign_keys='SlotApproval.requester_id', backref='requester', lazy='dynamic')
     approvals_handled = db.relationship('SlotApproval', foreign_keys='SlotApproval.approver_id', backref='approver', lazy='dynamic')
     
+    # 슬롯 할당량 관계
+    quota = db.relationship('SlotQuota', backref='user', uselist=False)
+    
     def __repr__(self):
         return f'<User {self.username}>'
     
@@ -80,6 +83,7 @@ class ShoppingSlot(db.Model):
     store_type = db.Column(db.String(50))  # 스마트스토어/쇼핑 
     product_id = db.Column(db.String(100))  # 광고품ID
     shopping_campaign_id = db.Column(db.String(100))  # 쇼핑캠페인ID
+    slot_type = db.Column(db.String(50), default='standard')  # 슬롯 유형 (standard: 일반, premium: 프리미엄)
     
     # 제품 관련 정보
     product_name = db.Column(db.String(200))  # 상품명
@@ -140,6 +144,7 @@ class PlaceSlot(db.Model):
     place_id = db.Column(db.String(100))  # 광고주ID
     business_category = db.Column(db.String(100))  # 업종분류 코드
     business_type = db.Column(db.String(100))  # 업종분류 명
+    slot_type = db.Column(db.String(50), default='search')  # 슬롯 유형 (search: 검색 유입, save: 저장)
     
     # 장소 관련 정보
     place_name = db.Column(db.String(200))  # 키워드
@@ -205,6 +210,112 @@ class SlotApproval(db.Model):
     
     def __repr__(self):
         return f'<SlotApproval {self.id}: {self.status}>'
+    
+    @property
+    def slot_type(self):
+        if self.shopping_slot_id:
+            return 'shopping'
+        elif self.place_slot_id:
+            return 'place'
+        return None
+    
+    @property
+    def slot(self):
+        if self.shopping_slot_id:
+            return self.shopping_slot
+        elif self.place_slot_id:
+            return self.place_slot
+        return None
+
+
+# 슬롯 할당량 모델
+class SlotQuota(db.Model):
+    """슬롯 할당량 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    shopping_slots_limit = db.Column(db.Integer, default=0)  # 쇼핑 슬롯 제한
+    place_slots_limit = db.Column(db.Integer, default=0)     # 플레이스 슬롯 제한
+    shopping_slots_used = db.Column(db.Integer, default=0)   # 사용된 쇼핑 슬롯
+    place_slots_used = db.Column(db.Integer, default=0)      # 사용된 플레이스 슬롯
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<SlotQuota user_id={self.user_id}: shopping={self.shopping_slots_used}/{self.shopping_slots_limit}, place={self.place_slots_used}/{self.place_slots_limit}>'
+    
+    # 쇼핑 슬롯 사용 가능 여부
+    @property
+    def can_use_shopping_slot(self):
+        return self.shopping_slots_used < self.shopping_slots_limit
+    
+    # 플레이스 슬롯 사용 가능 여부
+    @property
+    def can_use_place_slot(self):
+        return self.place_slots_used < self.place_slots_limit
+        
+        
+# 정산 모델
+class Settlement(db.Model):
+    """정산 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # 정산 관계 정보
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 정산 대상자
+    admin_id = db.Column(db.Integer, db.ForeignKey('user.id'))  # 정산 처리자
+    
+    # 정산 상태
+    status = db.Column(db.String(20), default='pending')  # pending, completed, cancelled
+    
+    # 정산 유형
+    settlement_type = db.Column(db.String(20), nullable=False)  # shopping, place
+    period_start = db.Column(db.Date, nullable=False)  # 정산 시작일
+    period_end = db.Column(db.Date, nullable=False)    # 정산 종료일
+    
+    # 정산 금액 정보
+    total_price = db.Column(db.Integer, default=0)  # 총 금액
+    admin_price = db.Column(db.Integer, default=0)  # 관리자 정산가
+    agency_price = db.Column(db.Integer, default=0) # 대행사 정산가
+    
+    # 정산 메모
+    notes = db.Column(db.Text)
+    
+    # 정산 날짜 정보
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    completed_at = db.Column(db.DateTime)  # 정산 완료일
+    
+    # 관계
+    user = db.relationship('User', foreign_keys=[user_id], backref='settlements')
+    admin = db.relationship('User', foreign_keys=[admin_id], backref='settlements_handled')
+    shopping_slots = db.relationship('SettlementItem', backref='settlement', 
+                                     lazy='dynamic', foreign_keys='SettlementItem.settlement_id')
+    
+    def __repr__(self):
+        return f'<Settlement {self.id}: {self.status}>'
+
+
+# 정산 항목 모델
+class SettlementItem(db.Model):
+    """정산 항목 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    
+    # 정산 관계
+    settlement_id = db.Column(db.Integer, db.ForeignKey('settlement.id'), nullable=False)
+    
+    # 슬롯 정보 (둘 중 하나만 설정)
+    shopping_slot_id = db.Column(db.Integer, db.ForeignKey('shopping_slot.id'))
+    place_slot_id = db.Column(db.Integer, db.ForeignKey('place_slot.id'))
+    
+    # 정산 금액 정보
+    slot_price = db.Column(db.Integer)       # 슬롯 원가
+    admin_price = db.Column(db.Integer)      # 관리자 정산가
+    settlement_price = db.Column(db.Integer)  # 실제 정산 금액
+    
+    # 관계
+    shopping_slot = db.relationship('ShoppingSlot', backref='settlement_items')
+    place_slot = db.relationship('PlaceSlot', backref='settlement_items')
+    
+    def __repr__(self):
+        return f'<SettlementItem {self.id}>'
     
     @property
     def slot_type(self):

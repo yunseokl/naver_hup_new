@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+
+{% block title %}총판 정산 관리{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="mb-4">정산 관리</h2>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">내 정산 내역</h5>
+                </div>
+                <div class="card-body">
+                    {% if own_settlements %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>유형</th>
+                                    <th>기간</th>
+                                    <th>총 금액</th>
+                                    <th>상태</th>
+                                    <th>생성일</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for settlement in own_settlements %}
+                                <tr>
+                                    <td>{{ settlement.id }}</td>
+                                    <td>
+                                        {% if settlement.settlement_type == 'shopping' %}
+                                        <span class="badge bg-info">쇼핑</span>
+                                        {% else %}
+                                        <span class="badge bg-success">플레이스</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ settlement.period_start.strftime('%Y-%m-%d') }} ~ {{ settlement.period_end.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ "{:,}".format(settlement.total_price) }}원</td>
+                                    <td>
+                                        {% if settlement.status == 'pending' %}
+                                        <span class="badge bg-warning">대기중</span>
+                                        {% elif settlement.status == 'completed' %}
+                                        <span class="badge bg-success">완료</span>
+                                        {% elif settlement.status == 'cancelled' %}
+                                        <span class="badge bg-danger">취소</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ settlement.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('distributor_settlement_detail', settlement_id=settlement.id) }}" class="btn btn-sm btn-primary">상세보기</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-secondary">
+                        정산 내역이 없습니다.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">소속 대행사 정산 내역</h5>
+                </div>
+                <div class="card-body">
+                    {% if agency_settlements %}
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>대행사</th>
+                                    <th>유형</th>
+                                    <th>기간</th>
+                                    <th>총 금액</th>
+                                    <th>상태</th>
+                                    <th>생성일</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for settlement in agency_settlements %}
+                                <tr>
+                                    <td>{{ settlement.id }}</td>
+                                    <td>{{ settlement.user.company_name }}</td>
+                                    <td>
+                                        {% if settlement.settlement_type == 'shopping' %}
+                                        <span class="badge bg-info">쇼핑</span>
+                                        {% else %}
+                                        <span class="badge bg-success">플레이스</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ settlement.period_start.strftime('%Y-%m-%d') }} ~ {{ settlement.period_end.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ "{:,}".format(settlement.total_price) }}원</td>
+                                    <td>
+                                        {% if settlement.status == 'pending' %}
+                                        <span class="badge bg-warning">대기중</span>
+                                        {% elif settlement.status == 'completed' %}
+                                        <span class="badge bg-success">완료</span>
+                                        {% elif settlement.status == 'cancelled' %}
+                                        <span class="badge bg-danger">취소</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ settlement.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <a href="{{ url_for('distributor_settlement_detail', settlement_id=settlement.id) }}" class="btn btn-sm btn-primary">상세보기</a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-secondary">
+                        소속 대행사의 정산 내역이 없습니다.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
