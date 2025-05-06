@@ -98,11 +98,16 @@
                             <th>슬롯명</th>
                             <th>대행사</th>
                             {% if slot_type == 'shopping' %}
+                            <th>스토어타입</th>
                             <th>상품명</th>
                             <th>키워드</th>
+                            <th>상품 ID</th>
+                            <th>가격</th>
                             {% else %}
                             <th>장소명</th>
                             <th>주소</th>
+                            <th>업종</th>
+                            <th>장소 ID</th>
                             {% endif %}
                             <th>기간</th>
                             <th>단가</th>
@@ -118,11 +123,16 @@
                                 <td>{{ slot.slot_name }}</td>
                                 <td>{{ slot.user.company_name }}</td>
                                 {% if slot_type == 'shopping' %}
-                                <td>{{ slot.product_name }}</td>
-                                <td>{{ slot.keywords }}</td>
+                                <td>{{ slot.store_type or 'None' }}</td>
+                                <td>{{ slot.product_name or 'None' }}</td>
+                                <td>{{ slot.keywords or 'None' }}</td>
+                                <td>{{ slot.product_id or 'None' }}</td>
+                                <td>{{ slot.price }}원</td>
                                 {% else %}
-                                <td>{{ slot.place_name }}</td>
-                                <td>{{ slot.address }}</td>
+                                <td>{{ slot.place_name or 'None' }}</td>
+                                <td>{{ slot.address or 'None' }}</td>
+                                <td>{{ slot.business_type or 'None' }}</td>
+                                <td>{{ slot.place_id or 'None' }}</td>
                                 {% endif %}
                                 <td>{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '-' }} ~ {{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '-' }}</td>
                                 <td>{{ slot.slot_price|default('미정', true) }}원</td>
@@ -139,6 +149,11 @@
                                 </td>
                                 <td>
                                     <div class="btn-group btn-group-sm">
+                                        {% if slot.status == 'empty' %}
+                                            <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#editSlotModal{{ slot.id }}">
+                                                <i class="icon icon-edit"></i> 저장
+                                            </button>
+                                        {% endif %}
                                         <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#viewSlotModal{{ slot.id }}">
                                             <i class="icon icon-eye"></i>
                                         </button>
@@ -259,10 +274,175 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- 편집 모달 -->
+                            {% if slot.status == 'empty' %}
+                            <div class="modal fade" id="editSlotModal{{ slot.id }}" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-lg">
+                                    <div class="modal-content">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">슬롯 정보 등록</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <form action="{{ url_for('edit_shopping_slot' if slot_type == 'shopping' else 'edit_place_slot', slot_id=slot.id) }}" method="post">
+                                            <div class="modal-body">
+                                                {% if slot_type == 'shopping' %}
+                                                <!-- 쇼핑 슬롯 필드 -->
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">슬롯명</label>
+                                                        <input type="text" class="form-control" value="{{ slot.slot_name }}" readonly>
+                                                        <small class="text-muted">슬롯명은 수정할 수 없습니다.</small>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="store_type{{ slot.id }}" class="form-label">스토어 타입 *</label>
+                                                        <select class="form-select" id="store_type{{ slot.id }}" name="store_type" required>
+                                                            <option value="">스토어 타입 선택</option>
+                                                            <option value="스마트스토어">스마트스토어</option>
+                                                            <option value="브랜드몰">브랜드몰</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="product_id{{ slot.id }}" class="form-label">상품 ID *</label>
+                                                        <input type="text" class="form-control" id="product_id{{ slot.id }}" name="product_id" required>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="shopping_campaign_id{{ slot.id }}" class="form-label">쇼핑캠페인 ID</label>
+                                                        <input type="text" class="form-control" id="shopping_campaign_id{{ slot.id }}" name="shopping_campaign_id">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="product_name{{ slot.id }}" class="form-label">상품명 *</label>
+                                                    <input type="text" class="form-control" id="product_name{{ slot.id }}" name="product_name" required>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="keywords{{ slot.id }}" class="form-label">키워드 *</label>
+                                                    <textarea class="form-control" id="keywords{{ slot.id }}" name="keywords" rows="2" required></textarea>
+                                                    <small class="text-muted">여러 키워드는 쉼표(,)로 구분하세요.</small>
+                                                </div>
+                                                
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="store_name{{ slot.id }}" class="form-label">스토어명</label>
+                                                        <input type="text" class="form-control" id="store_name{{ slot.id }}" name="store_name">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="price{{ slot.id }}" class="form-label">가격 *</label>
+                                                        <input type="number" class="form-control" id="price{{ slot.id }}" name="price" min="0" required>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="sale_price{{ slot.id }}" class="form-label">세일가격</label>
+                                                        <input type="number" class="form-control" id="sale_price{{ slot.id }}" name="sale_price" min="0">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="product_image_url{{ slot.id }}" class="form-label">제품 이미지 URL</label>
+                                                        <input type="text" class="form-control" id="product_image_url{{ slot.id }}" name="product_image_url">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="bid_type{{ slot.id }}" class="form-label">입찰 방식</label>
+                                                        <select class="form-select" id="bid_type{{ slot.id }}" name="bid_type">
+                                                            <option value="">선택</option>
+                                                            <option value="CPC">CPC</option>
+                                                            <option value="CPM">CPM</option>
+                                                            <option value="CPS">CPS</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="targeting{{ slot.id }}" class="form-label">타겟팅</label>
+                                                        <input type="text" class="form-control" id="targeting{{ slot.id }}" name="targeting">
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="notes{{ slot.id }}" class="form-label">메모</label>
+                                                    <textarea class="form-control" id="notes{{ slot.id }}" name="notes" rows="2"></textarea>
+                                                </div>
+                                                {% else %}
+                                                <!-- 플레이스 슬롯 필드 -->
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label class="form-label">슬롯명</label>
+                                                        <input type="text" class="form-control" value="{{ slot.slot_name }}" readonly>
+                                                        <small class="text-muted">슬롯명은 수정할 수 없습니다.</small>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="place_id{{ slot.id }}" class="form-label">광고주 ID *</label>
+                                                        <input type="text" class="form-control" id="place_id{{ slot.id }}" name="place_id" required>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="business_category{{ slot.id }}" class="form-label">업종분류 코드</label>
+                                                        <input type="text" class="form-control" id="business_category{{ slot.id }}" name="business_category">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="business_type{{ slot.id }}" class="form-label">업종 *</label>
+                                                        <input type="text" class="form-control" id="business_type{{ slot.id }}" name="business_type" required>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="place_name{{ slot.id }}" class="form-label">장소명 *</label>
+                                                    <input type="text" class="form-control" id="place_name{{ slot.id }}" name="place_name" required>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="address{{ slot.id }}" class="form-label">주소 *</label>
+                                                    <input type="text" class="form-control" id="address{{ slot.id }}" name="address" required>
+                                                </div>
+                                                
+                                                <div class="row mb-3">
+                                                    <div class="col-md-6">
+                                                        <label for="operation_status{{ slot.id }}" class="form-label">운영 상태</label>
+                                                        <input type="text" class="form-control" id="operation_status{{ slot.id }}" name="operation_status">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label for="status_reason{{ slot.id }}" class="form-label">상태 이유</label>
+                                                        <input type="text" class="form-control" id="status_reason{{ slot.id }}" name="status_reason">
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="status_detail{{ slot.id }}" class="form-label">상태 상세</label>
+                                                    <input type="text" class="form-control" id="status_detail{{ slot.id }}" name="status_detail">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="deadline_date{{ slot.id }}" class="form-label">마감일</label>
+                                                    <input type="date" class="form-control" id="deadline_date{{ slot.id }}" name="deadline_date">
+                                                </div>
+                                                
+                                                <div class="mb-3">
+                                                    <label for="notes{{ slot.id }}" class="form-label">메모</label>
+                                                    <textarea class="form-control" id="notes{{ slot.id }}" name="notes" rows="2"></textarea>
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                                <button type="submit" class="btn btn-success">저장하기</button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="8" class="text-center py-4">
+                                <td colspan="{% if slot_type == 'shopping' %}12{% else %}11{% endif %}" class="text-center py-4">
                                     <p class="mb-0">등록된 슬롯이 없습니다.</p>
                                 </td>
                             </tr>
