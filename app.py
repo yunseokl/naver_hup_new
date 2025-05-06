@@ -1037,14 +1037,16 @@ def agency_shopping_slots():
         db.session.add(slot_quota)
         db.session.commit()
     
+    # 빈 슬롯과 일반 슬롯 구분해서 가져오기
+    empty_slots = current_user.shopping_slots.filter_by(status='empty').order_by(ShoppingSlot.created_at.desc()).all()
+    filled_slots = current_user.shopping_slots.filter(ShoppingSlot.status != 'empty').order_by(ShoppingSlot.created_at.desc()).all()
+    
     # 새 슬롯을 추가할 수 있는지 확인
     can_add_slot = slot_quota.can_use_shopping_slot()
     
-    # 쇼핑 슬롯 목록 가져오기 (최신순)
-    shopping_slots = current_user.shopping_slots.order_by(ShoppingSlot.created_at.desc()).all()
-    
     return render_template('agency/shopping_slots.html', 
-                          shopping_slots=shopping_slots, 
+                          empty_slots=empty_slots,
+                          shopping_slots=filled_slots, 
                           slot_quota=slot_quota,
                           can_add_slot=can_add_slot)
 
@@ -1069,14 +1071,16 @@ def agency_place_slots():
         db.session.add(slot_quota)
         db.session.commit()
     
+    # 빈 슬롯과 일반 슬롯 구분해서 가져오기
+    empty_slots = current_user.place_slots.filter_by(status='empty').order_by(PlaceSlot.created_at.desc()).all()
+    filled_slots = current_user.place_slots.filter(PlaceSlot.status != 'empty').order_by(PlaceSlot.created_at.desc()).all()
+    
     # 새 슬롯을 추가할 수 있는지 확인
     can_add_slot = slot_quota.can_use_place_slot()
     
-    # 플레이스 슬롯 목록 가져오기 (최신순)
-    place_slots = current_user.place_slots.order_by(PlaceSlot.created_at.desc()).all()
-    
     return render_template('agency/place_slots.html', 
-                          place_slots=place_slots, 
+                          empty_slots=empty_slots,
+                          place_slots=filled_slots, 
                           slot_quota=slot_quota,
                           can_add_slot=can_add_slot)
 
@@ -1156,11 +1160,21 @@ def edit_shopping_slot(slot_id):
     shopping_slot.bid_type = bid_type
     shopping_slot.targeting = targeting
     
-    # 수정 내용 저장
-    db.session.commit()
-    
-    # 승인이 필요한 변경인 경우 승인 요청 생성
-    if shopping_slot.status == 'approved':
+    # 빈 슬롯인 경우 승인 요청 상태로 변경
+    if shopping_slot.status == 'empty':
+        shopping_slot.status = 'pending'
+        
+        # 승인 요청 생성
+        approval = SlotApproval(
+            requester_id=current_user.id,
+            shopping_slot_id=shopping_slot.id,
+            approval_type='create'
+        )
+        
+        db.session.add(approval)
+        flash('빈 슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
+    # 이미 승인된 슬롯인 경우 업데이트 요청 생성
+    elif shopping_slot.status == 'approved':
         # 승인 요청 생성
         approval = SlotApproval(
             requester_id=current_user.id,
@@ -1169,11 +1183,12 @@ def edit_shopping_slot(slot_id):
         )
         
         db.session.add(approval)
-        db.session.commit()
-        
         flash('쇼핑 슬롯 정보가 수정되었고, 변경사항에 대한 승인 요청이 제출되었습니다.', 'success')
     else:
         flash('쇼핑 슬롯 정보가 수정되었습니다.', 'success')
+    
+    # 수정 내용 저장
+    db.session.commit()
     
     return redirect(url_for('agency_shopping_slots'))
 
@@ -1500,6 +1515,134 @@ def request_slot_quota():
     return render_template('agency/request_slot_quota.html', form=form)
 
 # 플레이스 슬롯 관련 라우트
+@app.route('/place-slots/edit/<int:slot_id>', methods=['POST'])
+@login_required
+@agency_required
+def edit_place_slot(slot_id):
+    """플레이스 슬롯 수정"""
+    place_slot = PlaceSlot.query.get_or_404(slot_id)
+    
+    # 슬롯 소유권 확인
+    if place_slot.user_id != current_user.id:
+        flash('권한이 없습니다.', 'danger')
+        return redirect(url_for('agency_place_slots'))
+    
+    # 폼 데이터 처리
+    slot_name = request.form.get('slot_name')
+    place_id = request.form.get('place_id')
+    business_category = request.form.get('business_category')
+    business_type = request.form.get('business_type')
+    place_name = request.form.get('place_name')
+    address = request.form.get('address')
+    operation_status = request.form.get('operation_status')
+    status_reason = request.form.get('status_reason')
+    
+    # 날짜 처리
+    start_date = request.form.get('start_date')
+    if start_date:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    
+    end_date = request.form.get('end_date')
+    if end_date:
+        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+    
+    deadline_date = request.form.get('deadline_date')
+    if deadline_date:
+        deadline_date = datetime.strptime(deadline_date, '%Y-%m-%d').date()
+    
+    # 슬롯 정보 업데이트
+    place_slot.slot_name = slot_name
+    place_slot.place_id = place_id
+    place_slot.business_category = business_category
+    place_slot.business_type = business_type
+    place_slot.place_name = place_name
+    place_slot.address = address
+    place_slot.operation_status = operation_status
+    place_slot.status_reason = status_reason
+    place_slot.start_date = start_date
+    place_slot.end_date = end_date
+    place_slot.deadline_date = deadline_date
+    
+    # 빈 슬롯인 경우 승인 요청 상태로 변경
+    if place_slot.status == 'empty':
+        place_slot.status = 'pending'
+        
+        # 승인 요청 생성
+        approval = SlotApproval(
+            requester_id=current_user.id,
+            place_slot_id=place_slot.id,
+            approval_type='create'
+        )
+        
+        db.session.add(approval)
+        flash('빈 슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
+    # 이미 승인된 슬롯인 경우 업데이트 요청 생성
+    elif place_slot.status == 'approved':
+        # 승인 요청 생성
+        approval = SlotApproval(
+            requester_id=current_user.id,
+            place_slot_id=place_slot.id,
+            approval_type='update'
+        )
+        
+        db.session.add(approval)
+        flash('플레이스 슬롯 정보가 수정되었고, 변경사항에 대한 승인 요청이 제출되었습니다.', 'success')
+    else:
+        flash('플레이스 슬롯 정보가 수정되었습니다.', 'success')
+    
+    # 수정 내용 저장
+    db.session.commit()
+    
+    return redirect(url_for('agency_place_slots'))
+
+@app.route('/place-slots/delete/<int:slot_id>')
+@login_required
+@agency_required
+def delete_place_slot(slot_id):
+    """플레이스 슬롯 삭제"""
+    place_slot = PlaceSlot.query.get_or_404(slot_id)
+    
+    # 슬롯 소유권 확인
+    if place_slot.user_id != current_user.id:
+        flash('권한이 없습니다.', 'danger')
+        return redirect(url_for('agency_place_slots'))
+    
+    # 슬롯이 정산에 포함된 경우 삭제 불가
+    if SettlementItem.query.filter_by(place_slot_id=slot_id).first():
+        flash('이 슬롯은 정산 항목에 포함되어 있어 삭제할 수 없습니다.', 'danger')
+        return redirect(url_for('agency_place_slots'))
+    
+    # 승인된 슬롯인 경우 삭제 요청
+    if place_slot.status == 'approved':
+        # 승인 요청 생성
+        approval = SlotApproval(
+            requester_id=current_user.id,
+            place_slot_id=place_slot.id,
+            approval_type='delete'
+        )
+        
+        db.session.add(approval)
+        db.session.commit()
+        
+        flash('슬롯 삭제 요청이 제출되었습니다. 승인 후 삭제가 완료됩니다.', 'success')
+    else:
+        # 관련 승인 요청 삭제
+        SlotApproval.query.filter_by(place_slot_id=slot_id).delete()
+        
+        # 슬롯 삭제
+        db.session.delete(place_slot)
+        db.session.commit()
+        
+        # 할당량 업데이트
+        slot_quota = current_user.quota
+        if slot_quota and slot_quota.place_slots_used > 0:
+            slot_quota.place_slots_used -= 1
+            db.session.commit()
+        
+        flash('플레이스 슬롯이 삭제되었습니다.', 'success')
+    
+    return redirect(url_for('agency_place_slots'))
+
 @app.route('/place-slots/create', methods=['GET', 'POST'])
 @login_required
 def create_place_slot():
