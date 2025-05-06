@@ -2,6 +2,11 @@
 
 {% block title %}쇼핑 슬롯 관리 - 네이버 광고 슬롯 관리 시스템{% endblock %}
 
+{% block head %}
+{{ super() }}
+<script src="https://unpkg.com/feather-icons"></script>
+{% endblock %}
+
 {% block styles %}
 {{ super() }}
 <style>
@@ -124,7 +129,7 @@
                         <th>MID</th>
                         <th>시작일</th>
                         <th>종료일</th>
-                        <th>초직유형</th>
+                        <th>로직유형</th>
                         <th>단가</th>
                         <th>상태</th>
                         <th>관리</th>
@@ -157,9 +162,14 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="form-check form-switch d-flex justify-content-center">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault{{ slot.id }}" 
-                                        {% if slot.status == 'live' %}checked{% endif %}>
+                                <div class="d-flex justify-content-center gap-2">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault{{ slot.id }}" 
+                                            {% if slot.status == 'live' %}checked{% endif %}>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary edit-slot-btn" data-bs-toggle="modal" data-bs-target="#editModal{{ slot.id }}">
+                                        <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -590,6 +600,10 @@
 
     // 슬롯 스위치 토글 및 일괄 저장 기능
     document.addEventListener('DOMContentLoaded', function() {
+        // Feather 아이콘 초기화
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
         // 슬롯 활성화 스위치 토글 처리
         const slotSwitches = document.querySelectorAll('.form-check-input[type="checkbox"][role="switch"]');
         slotSwitches.forEach(switchEl => {
