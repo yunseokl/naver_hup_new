@@ -1147,6 +1147,10 @@ def create_distributor_slot():
     
     return redirect(url_for('distributor_slots', type=slot_type))
 
+# 위에서 정의된 edit_shopping_slot 함수와 중복되어 제거했습니다
+
+# 다른 위치에 정의된 edit_place_slot 함수와 중복되어 제거했습니다
+
 @app.route('/distributor/slots/delete/<int:slot_id>')
 @distributor_required
 def delete_distributor_slot(slot_id):
@@ -1776,85 +1780,120 @@ def select_shopping_slot(slot_id):
 
 @app.route('/shopping-slots/edit/<int:slot_id>', methods=['POST'])
 @login_required
-@agency_required
 def edit_shopping_slot(slot_id):
-    """쇼핑 슬롯 수정"""
+    """쇼핑 슬롯 수정 (총판/대행사 공통)"""
     shopping_slot = ShoppingSlot.query.get_or_404(slot_id)
     
-    # 슬롯 소유권 확인
-    if shopping_slot.user_id != current_user.id:
+    # 권한 검사: 슬롯 소유자이거나 소유자의 총판인 경우만 접근 가능
+    if not (shopping_slot.user_id == current_user.id or 
+            (current_user.is_distributor() and shopping_slot.user.parent_id == current_user.id)):
         flash('권한이 없습니다.', 'danger')
-        return redirect(url_for('agency_shopping_slots'))
+        if current_user.is_distributor():
+            return redirect(url_for('distributor_slots', type='shopping'))
+        else:
+            return redirect(url_for('agency_shopping_slots'))
     
-    # 폼 데이터 처리
-    slot_name = request.form.get('slot_name')
-    store_type = request.form.get('store_type')
-    product_id = request.form.get('product_id')
-    shopping_campaign_id = request.form.get('shopping_campaign_id')
-    product_name = request.form.get('product_name')
-    keywords = request.form.get('keywords')
-    store_name = request.form.get('store_name')
-    price = request.form.get('price')
-    sale_price = request.form.get('sale_price')
-    
-    # 날짜 처리
-    start_date = request.form.get('start_date')
-    if start_date:
-        start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-    
-    end_date = request.form.get('end_date')
-    if end_date:
-        end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
-    
-    bid_type = request.form.get('bid_type')
-    targeting = request.form.get('targeting')
-    
-    # 슬롯 정보 업데이트
-    shopping_slot.slot_name = slot_name
-    shopping_slot.store_type = store_type
-    shopping_slot.product_id = product_id
-    shopping_slot.shopping_campaign_id = shopping_campaign_id
-    shopping_slot.product_name = product_name
-    shopping_slot.keywords = keywords
-    shopping_slot.store_name = store_name
-    shopping_slot.price = price if price else None
-    shopping_slot.sale_price = sale_price if sale_price else None
-    shopping_slot.start_date = start_date
-    shopping_slot.end_date = end_date
-    shopping_slot.bid_type = bid_type
-    shopping_slot.targeting = targeting
-    
-    # 빈 슬롯인 경우 승인 요청 상태로 변경
-    if shopping_slot.status == 'empty':
-        shopping_slot.status = 'pending'
+    try:
+        # 폼 데이터 처리
+        slot_name = request.form.get('slot_name')
+        store_type = request.form.get('store_type')
+        product_id = request.form.get('product_id')
+        shopping_campaign_id = request.form.get('shopping_campaign_id')
+        product_name = request.form.get('product_name')
+        keywords = request.form.get('keywords')
+        store_name = request.form.get('store_name')
+        price = request.form.get('price')
+        sale_price = request.form.get('sale_price')
+        impressions = request.form.get('impressions')
+        clicks = request.form.get('clicks')
+        amount = request.form.get('amount')
+        product_image_url = request.form.get('product_image_url')
+        notes = request.form.get('notes')
         
-        # 승인 요청 생성
-        approval = SlotApproval(
-            requester_id=current_user.id,
-            shopping_slot_id=shopping_slot.id,
-            approval_type='create'
-        )
+        # 날짜 처리
+        start_date = request.form.get('start_date')
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
         
-        db.session.add(approval)
-        flash('빈 슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
-    # 이미 승인된 슬롯인 경우 업데이트 요청 생성
-    elif shopping_slot.status == 'approved':
-        # 승인 요청 생성
-        approval = SlotApproval(
-            requester_id=current_user.id,
-            shopping_slot_id=shopping_slot.id,
-            approval_type='update'
-        )
+        end_date = request.form.get('end_date')
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
-        db.session.add(approval)
-        flash('쇼핑 슬롯 정보가 수정되었고, 변경사항에 대한 승인 요청이 제출되었습니다.', 'success')
-    else:
-        flash('쇼핑 슬롯 정보가 수정되었습니다.', 'success')
+        bid_type = request.form.get('bid_type')
+        targeting = request.form.get('targeting')
+        
+        # 슬롯 정보 업데이트
+        shopping_slot.slot_name = slot_name
+        shopping_slot.store_type = store_type
+        shopping_slot.product_id = product_id
+        shopping_slot.shopping_campaign_id = shopping_campaign_id
+        shopping_slot.product_name = product_name
+        shopping_slot.keywords = keywords
+        shopping_slot.store_name = store_name
+        shopping_slot.price = price if price else None
+        shopping_slot.sale_price = sale_price if sale_price else None
+        shopping_slot.start_date = start_date
+        shopping_slot.end_date = end_date
+        shopping_slot.bid_type = bid_type
+        shopping_slot.targeting = targeting
+        shopping_slot.impressions = impressions
+        shopping_slot.clicks = clicks
+        shopping_slot.amount = amount
+        shopping_slot.product_image_url = product_image_url
+        shopping_slot.notes = notes
+        
+        # 상태 업데이트 (pending으로 변경)
+        # 총판이 자신의 슬롯을 수정하는 경우에는 바로 approved로 변경
+        if current_user.is_distributor() and shopping_slot.user_id == current_user.id:
+            shopping_slot.status = 'approved'
+            flash('쇼핑 슬롯 정보가 수정되었습니다.', 'success')
+        elif shopping_slot.status == 'empty':
+            shopping_slot.status = 'pending'  # 빈 슬롯 -> 승인 대기
+            
+            # 승인 요청 생성
+            approval = SlotApproval(
+                requester_id=current_user.id,
+                shopping_slot_id=shopping_slot.id,
+                approval_type='create'
+            )
+            
+            db.session.add(approval)
+            flash('빈 슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
+        elif shopping_slot.status == 'approved' and current_user.is_agency():
+            shopping_slot.status = 'pending'  # 승인됨 -> 변경사항 대기
+            
+            # 승인 요청 생성
+            approval = SlotApproval(
+                requester_id=current_user.id,
+                shopping_slot_id=shopping_slot.id,
+                approval_type='update'
+            )
+            
+            db.session.add(approval)
+            flash('쇼핑 슬롯 정보가 수정되었고, 변경사항에 대한 승인 요청이 제출되었습니다.', 'success')
+        else:
+            flash('쇼핑 슬롯 정보가 수정되었습니다.', 'success')
+            
+        # 수정 내용 저장
+        db.session.commit()
+        
+        # 리디렉션 처리
+        if current_user.is_distributor():
+            return redirect(url_for('distributor_slots', type='shopping'))
+        else:
+            return redirect(url_for('agency_shopping_slots'))
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'슬롯 수정 중 오류가 발생했습니다: {str(e)}', 'danger')
+        
+        if current_user.is_distributor():
+            return redirect(url_for('distributor_slots', type='shopping'))
+        else:
+            return redirect(url_for('agency_shopping_slots'))
     
-    # 수정 내용 저장
-    db.session.commit()
-    
-    return redirect(url_for('agency_shopping_slots'))
+    # 이 코드는 접근되지 않습니다(위에서 이미 리턴됨)
+    # return redirect(url_for('agency_shopping_slots'))
 
 @app.route('/shopping-slots/delete/<int:slot_id>')
 @login_required
