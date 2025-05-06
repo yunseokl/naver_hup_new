@@ -15,6 +15,14 @@ from sqlalchemy import or_
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from functools import wraps
 from flask_wtf import FlaskForm
+import locale
+
+# 숫자 포맷팅을 위한 설정
+try:
+    locale.setlocale(locale.LC_ALL, 'ko_KR.UTF-8')
+except:
+    # 한국어 로케일을 지원하지 않는 경우 기본 로케일 사용
+    locale.setlocale(locale.LC_ALL, '')
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -86,6 +94,15 @@ def create_tables_and_defaults():
             db.session.add(admin)
         
         db.session.commit()
+
+# 템플릿 필터 등록
+@app.template_filter('format_number')
+def format_number_filter(value):
+    """숫자를 포맷팅하는 필터 (예: 10000 -> 10,000)"""
+    try:
+        return f"{int(value):,}" if value is not None else "0"
+    except (ValueError, TypeError):
+        return "0"
 
 # app 초기화 후 바로 실행합니다
 create_tables_and_defaults()
