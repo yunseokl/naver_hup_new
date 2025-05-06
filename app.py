@@ -158,18 +158,43 @@ def logout():
     return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
-@admin_required
 def register():
-    """새 사용자 등록 (관리자만 가능)"""
-    if request.method == 'POST':
+    """새 사용자 회원가입 - 관리자 승인 필요"""
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    form = FlaskForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
         username = request.form.get('username')
         email = request.form.get('email')
         password = request.form.get('password')
+        confirm_password = request.form.get('confirm_password')
         company_name = request.form.get('company_name')
         phone = request.form.get('phone')
         role_id = request.form.get('role_id')
         parent_id = request.form.get('parent_id')
+        agree_terms = request.form.get('agree_terms')
         
+        # 기본 검증
+        if not username or not email or not password or not role_id or not company_name or not phone:
+            flash('모든 필수 항목을 입력해주세요.', 'warning')
+            return redirect(url_for('register'))
+        
+        if not agree_terms:
+            flash('이용약관에 동의해주세요.', 'warning')
+            return redirect(url_for('register'))
+        
+        if password != confirm_password:
+            flash('비밀번호가 일치하지 않습니다.', 'danger')
+            return redirect(url_for('register'))
+        
+        # 비밀번호 강도 확인
+        if len(password) < 8:
+            flash('비밀번호는 8자 이상이어야 합니다.', 'danger')
+            return redirect(url_for('register'))
+        
+        # 이메일/사용자명 중복 확인
         if User.query.filter_by(username=username).first():
             flash('이미 사용 중인 아이디입니다.', 'danger')
             return redirect(url_for('register'))
@@ -178,28 +203,55 @@ def register():
             flash('이미 사용 중인 이메일입니다.', 'danger')
             return redirect(url_for('register'))
         
+        # 역할 확인
+        role = Role.query.get(role_id)
+        if not role:
+            flash('잘못된 역할입니다.', 'danger')
+            return redirect(url_for('register'))
+        
+        # 관리자는 회원가입을 통해 등록할 수 없음
+        if role.name == 'admin':
+            flash('관리자 계정은 이 방법으로 등록할 수 없습니다.', 'danger')
+            return redirect(url_for('register'))
+        
+        # 대행사인 경우 총판 필수 체크
+        if role.name == 'agency' and not parent_id:
+            flash('대행사는 소속 총판을 선택해야 합니다.', 'warning')
+            return redirect(url_for('register'))
+        
+        # 총판인 경우 parent_id를 None으로 설정
+        if role.name == 'distributor':
+            parent_id = None
+        
+        # 새 사용자 생성 (초기 상태: 비활성)
         user = User(
-            username=username,
-            email=email,
-            company_name=company_name,
-            phone=phone,
-            role_id=role_id
+            username=username, 
+            email=email, 
+            company_name=company_name, 
+            phone=phone, 
+            role_id=role_id, 
+            parent_id=parent_id if parent_id else None,
+            is_active=False  # 승인 전까지 비활성화
         )
         user.set_password(password)
-        
-        # 부모 ID 설정 (총판 경우)
-        if parent_id and int(parent_id) > 0:
-            user.parent_id = parent_id
         
         db.session.add(user)
         db.session.commit()
         
-        flash('사용자가 성공적으로 등록되었습니다.', 'success')
-        return redirect(url_for('users'))
+        # 관리자에게 이메일 알림 보내기 (구현 필요)
+        # send_admin_notification_email(user)
+        
+        flash('회원가입이 신청되었습니다. 관리자 승인 후 로그인이 가능합니다.', 'success')
+        return redirect(url_for('login'))
     
-    roles = Role.query.all()
-    distributors = User.query.join(Role).filter(Role.name == 'distributor').all()
-    return render_template('admin/register.html', roles=roles, distributors=distributors)
+    # 역할 및 총판 리스트 가져오기 (관리자 역할 제외)
+    roles = Role.query.filter(Role.name != 'admin').all()
+    distributors = User.query.join(Role).filter(
+        Role.name == 'distributor',
+        User.is_active == True
+    ).all()
+    
+    return render_template('auth/register.html', form=form, roles=roles, distributors=distributors)
 
 # 메인 라우트
 @app.route('/')
