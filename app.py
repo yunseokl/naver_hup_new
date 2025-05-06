@@ -4117,3 +4117,5 @@ def bulk_delete_shopping_slots():
     return jsonify({'success': True, 'count': count})
 
 
+
+
