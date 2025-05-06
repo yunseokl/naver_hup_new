@@ -25,13 +25,19 @@
             <!-- 액션 버튼 -->
             <div class="d-flex flex-wrap gap-2 mb-4">
                 <a href="{{ url_for('upload_shopping_slots') }}" class="btn btn-success">
-                    <i class="icon icon-upload"></i> 일괄 업로드
+                    <i data-feather="upload"></i> 일괄 업로드
                 </a>
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSlotModal" {% if not can_add_slot %}disabled{% endif %}>
-                    <i class="icon icon-plus"></i> 슬롯 추가
+                    <i data-feather="plus"></i> 슬롯 추가
+                </button>
+                <button type="button" class="btn btn-warning" id="bulkSaveButton" {% if shopping_slots|length == 0 %}disabled{% endif %}>
+                    <i data-feather="save"></i> 일괄 저장
+                </button>
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#bulkDeleteModal" {% if shopping_slots|length == 0 %}disabled{% endif %}>
+                    <i data-feather="trash-2"></i> 전체 삭제
                 </button>
                 <a href="{{ url_for('export_slots', type='shopping') }}" class="btn btn-outline-secondary">
-                    <i class="icon icon-download"></i> 양식 다운로드
+                    <i data-feather="download"></i> 양식 다운로드
                 </a>
             </div>
             
@@ -344,6 +350,35 @@
                     </div>
                     {% endif %}
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 전체 삭제 모달 -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="bulkDeleteModalLabel">전체 슬롯 삭제 확인</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger">
+                    <h5 class="alert-heading"><i data-feather="alert-triangle" class="feather-sm me-1"></i> 주의!</h5>
+                    <p>모든 쇼핑 슬롯을 삭제하시겠습니까?</p>
+                    <p class="mb-0">이 작업은 <strong>돌이킬 수 없으며</strong>, 모든 쇼핑 슬롯 데이터가 영구적으로 삭제됩니다.</p>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="confirmBulkDelete">
+                    <label class="form-check-label" for="confirmBulkDelete">
+                        모든 쇼핑 슬롯을 영구적으로 삭제하는 것을 이해하고 동의합니다.
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-danger" id="bulkDeleteConfirmButton" disabled>전체 삭제</button>
             </div>
         </div>
     </div>

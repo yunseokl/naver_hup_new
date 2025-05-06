@@ -3085,13 +3085,4 @@ def agency_settlement_detail(settlement_id):
                           items=items)
 
 
-# 다운로드 기능을 위한 라우트
-@app.route('/download')
-def download_page():
-    """프로젝트 다운로드 페이지"""
-    return render_template('downloads/index.html')
 
-@app.route('/download/project.zip')
-def download_project_zip():
-    """프로젝트 파일 다운로드"""
-    return send_from_directory('downloads', 'project.zip')
