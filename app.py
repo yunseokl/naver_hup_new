@@ -1000,7 +1000,11 @@ def upload_distributor_slots():
     """총판의 슬롯 일괄 업로드"""
     slot_type = request.form.get('slot_type')
     agency_id = request.form.get('agency_id')
-    slot_price = request.form.get('slot_price')
+    # 슬롯 단가는 0원에서 1000원으로 제한
+    try:
+        slot_price = min(max(int(request.form.get('slot_price', 0)), 0), 1000)
+    except (ValueError, TypeError):
+        slot_price = 0
     
     # 대행사 또는 총판 자신용 슬롯 구분
     is_for_distributor = False  # 총판 자신용 슬롯인지 여부
@@ -1137,7 +1141,7 @@ def export_slots():
                 '시작일': [pd.Timestamp('2025-05-01'), pd.Timestamp('2025-05-15')],
                 '종료일': [pd.Timestamp('2025-05-31'), pd.Timestamp('2025-06-15')],
                 '입찰방식': ['CPC', 'CPM'],
-                '슬롯 단가': [5000, 6000]
+                '슬롯 단가': [500, 800]
             }
         else:
             data = {
@@ -1149,7 +1153,7 @@ def export_slots():
                 '시작일': [pd.Timestamp('2025-05-01'), pd.Timestamp('2025-05-15')],
                 '종료일': [pd.Timestamp('2025-05-31'), pd.Timestamp('2025-06-15')],
                 '마감일': [pd.Timestamp('2025-06-15'), pd.Timestamp('2025-07-01')],
-                '슬롯 단가': [7000, 8000]
+                '슬롯 단가': [700, 900]
             }
     else:
         # 실제 데이터 추출
@@ -1334,12 +1338,18 @@ def distributor_approve_quota(request_id):
         quota_request.processed_at = datetime.utcnow()
         quota_request.response_comment = comment
         
-        # 슬롯 가격 설정
+        # 슬롯 가격 설정 (0원에서 1000원으로 제한)
         if quota_request.shopping_slots_requested > 0 and shopping_slot_price:
-            quota_request.shopping_slot_price = int(shopping_slot_price)
+            try:
+                quota_request.shopping_slot_price = min(max(int(shopping_slot_price), 0), 1000)
+            except (ValueError, TypeError):
+                quota_request.shopping_slot_price = 0
         
         if quota_request.place_slots_requested > 0 and place_slot_price:
-            quota_request.place_slot_price = int(place_slot_price)
+            try:
+                quota_request.place_slot_price = min(max(int(place_slot_price), 0), 1000)
+            except (ValueError, TypeError):
+                quota_request.place_slot_price = 0
         
         # 대행사의 할당량 업데이트
         agency = User.query.get(quota_request.requester_id)
