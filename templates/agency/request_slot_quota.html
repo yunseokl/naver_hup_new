@@ -33,6 +33,11 @@
                                                 <option value="premium">프리미엄</option>
                                             </select>
                                         </div>
+                                        <div class="mb-3">
+                                            <label for="shopping_slot_price" class="form-label">희망 슬롯 단가 (원)</label>
+                                            <input type="number" class="form-control" id="shopping_slot_price" name="shopping_slot_price" min="0" step="1000" value="0">
+                                            <small class="form-text text-muted">요청 희망 가격입니다. 총판 승인 시 조정될 수 있습니다.</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -50,6 +55,11 @@
                                                 <option value="search">검색 유입</option>
                                                 <option value="save">저장</option>
                                             </select>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="place_slot_price" class="form-label">희망 슬롯 단가 (원)</label>
+                                            <input type="number" class="form-control" id="place_slot_price" name="place_slot_price" min="0" step="1000" value="0">
+                                            <small class="form-text text-muted">요청 희망 가격입니다. 총판 승인 시 조정될 수 있습니다.</small>
                                         </div>
                                     </div>
                                 </div>
@@ -103,23 +113,88 @@
         end.setMonth(end.getMonth() + 1);
         document.getElementById('end_date').value = end.toISOString().split('T')[0];
         
+        // 수량에 따른 가격 입력 필드 제어
+        const shoppingCountInput = document.getElementById('shopping_slots_requested');
+        const shoppingPriceInput = document.getElementById('shopping_slot_price');
+        const placeCountInput = document.getElementById('place_slots_requested');
+        const placePriceInput = document.getElementById('place_slot_price');
+        
+        function togglePriceInput() {
+            const shoppingCount = parseInt(shoppingCountInput.value) || 0;
+            const placeCount = parseInt(placeCountInput.value) || 0;
+            
+            // 쇼핑 슬롯 가격 필드 제어
+            if (shoppingCount > 0) {
+                shoppingPriceInput.removeAttribute('disabled');
+                shoppingPriceInput.setAttribute('required', 'required');
+                if (parseInt(shoppingPriceInput.value) <= 0) {
+                    shoppingPriceInput.value = 10000; // 기본값 설정
+                }
+            } else {
+                shoppingPriceInput.setAttribute('disabled', 'disabled');
+                shoppingPriceInput.removeAttribute('required');
+                shoppingPriceInput.value = 0;
+            }
+            
+            // 플레이스 슬롯 가격 필드 제어
+            if (placeCount > 0) {
+                placePriceInput.removeAttribute('disabled');
+                placePriceInput.setAttribute('required', 'required');
+                if (parseInt(placePriceInput.value) <= 0) {
+                    placePriceInput.value = 10000; // 기본값 설정
+                }
+            } else {
+                placePriceInput.setAttribute('disabled', 'disabled');
+                placePriceInput.removeAttribute('required');
+                placePriceInput.value = 0;
+            }
+        }
+        
+        // 초기 설정
+        togglePriceInput();
+        
+        // 이벤트 리스너 추가
+        shoppingCountInput.addEventListener('change', togglePriceInput);
+        shoppingCountInput.addEventListener('input', togglePriceInput);
+        placeCountInput.addEventListener('change', togglePriceInput);
+        placeCountInput.addEventListener('input', togglePriceInput);
+        
         // 폼 유효성 검증
         const form = document.querySelector('form');
         form.addEventListener('submit', function(event) {
-            const shopping = parseInt(document.getElementById('shopping_slots_requested').value) || 0;
-            const place = parseInt(document.getElementById('place_slots_requested').value) || 0;
+            const shopping = parseInt(shoppingCountInput.value) || 0;
+            const place = parseInt(placeCountInput.value) || 0;
             
+            // 슬롯 수량 검증
             if (shopping <= 0 && place <= 0) {
                 event.preventDefault();
                 alert('최소 1개 이상의 슬롯을 요청해야 합니다.');
+                return;
             }
             
+            // 날짜 검증
             const start = new Date(document.getElementById('start_date').value);
             const end = new Date(document.getElementById('end_date').value);
             
             if (end <= start) {
                 event.preventDefault();
                 alert('종료일은 시작일 이후여야 합니다.');
+                return;
+            }
+            
+            // 가격 검증
+            if (shopping > 0 && parseInt(shoppingPriceInput.value) <= 0) {
+                event.preventDefault();
+                alert('쇼핑 슬롯 단가를 입력해주세요.');
+                shoppingPriceInput.focus();
+                return;
+            }
+            
+            if (place > 0 && parseInt(placePriceInput.value) <= 0) {
+                event.preventDefault();
+                alert('플레이스 슬롯 단가를 입력해주세요.');
+                placePriceInput.focus();
+                return;
             }
         });
     });

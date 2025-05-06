@@ -1369,7 +1369,95 @@ def upload_shopping_slots():
     return render_template('agency/upload_shopping_slots.html')
 
 # 슬롯 할당량 요청 관련 라우트
-
+@app.route('/agency/request-slot-quota', methods=['GET', 'POST'])
+@login_required
+@agency_required
+def request_slot_quota():
+    """대행사의 슬롯 할당량 요청 페이지"""
+    # 소속 총판이 있는지 확인
+    if not current_user.parent_id:
+        flash('소속된 총판이 없어 슬롯 할당량을 요청할 수 없습니다.', 'danger')
+        return redirect(url_for('agency_dashboard'))
+    
+    # 폼 생성 (CSRF 토큰 포함)
+    class SlotQuotaRequestForm(FlaskForm):
+        pass  # CSRF 토큰만 필요
+    
+    form = SlotQuotaRequestForm()
+    
+    if request.method == 'POST':
+        # 폼 데이터 처리
+        shopping_slots_requested = request.form.get('shopping_slots_requested', 0)
+        place_slots_requested = request.form.get('place_slots_requested', 0)
+        shopping_slot_type = request.form.get('shopping_slot_type')
+        place_slot_type = request.form.get('place_slot_type')
+        shopping_slot_price = request.form.get('shopping_slot_price', 0)
+        place_slot_price = request.form.get('place_slot_price', 0)
+        
+        # 날짜 처리
+        start_date = request.form.get('start_date')
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+        
+        end_date = request.form.get('end_date')
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+        
+        request_reason = request.form.get('request_reason')
+        
+        # 요청 슬롯 수 확인
+        shopping_slots_requested = int(shopping_slots_requested) if shopping_slots_requested else 0
+        place_slots_requested = int(place_slots_requested) if place_slots_requested else 0
+        shopping_slot_price = int(shopping_slot_price) if shopping_slot_price else 0
+        place_slot_price = int(place_slot_price) if place_slot_price else 0
+        
+        if shopping_slots_requested <= 0 and place_slots_requested <= 0:
+            flash('최소 1개 이상의 슬롯을 요청해야 합니다.', 'danger')
+            return redirect(url_for('request_slot_quota'))
+        
+        # 가격 검증
+        if shopping_slots_requested > 0 and shopping_slot_price <= 0:
+            flash('쇼핑 슬롯 단가를 입력해주세요.', 'danger')
+            return redirect(url_for('request_slot_quota'))
+            
+        if place_slots_requested > 0 and place_slot_price <= 0:
+            flash('플레이스 슬롯 단가를 입력해주세요.', 'danger')
+            return redirect(url_for('request_slot_quota'))
+        
+        # 날짜 검증
+        if start_date and end_date and end_date <= start_date:
+            flash('종료일은 시작일 이후여야 합니다.', 'danger')
+            return redirect(url_for('request_slot_quota'))
+        
+        # 총판 정보 가져오기
+        distributor = User.query.get(current_user.parent_id)
+        if not distributor:
+            flash('소속 총판 정보를 찾을 수 없습니다.', 'danger')
+            return redirect(url_for('agency_dashboard'))
+        
+        # 요청 생성
+        quota_request = SlotQuotaRequest(
+            requester_id=current_user.id,
+            approver_id=distributor.id,  # 승인자는 소속 총판
+            shopping_slots_requested=shopping_slots_requested,
+            place_slots_requested=place_slots_requested,
+            shopping_slot_type=shopping_slot_type if shopping_slots_requested > 0 else None,
+            place_slot_type=place_slot_type if place_slots_requested > 0 else None,
+            shopping_slot_price=shopping_slot_price if shopping_slots_requested > 0 else None,
+            place_slot_price=place_slot_price if place_slots_requested > 0 else None,
+            start_date=start_date,
+            end_date=end_date,
+            request_reason=request_reason,
+            status='pending'
+        )
+        
+        db.session.add(quota_request)
+        db.session.commit()
+        
+        flash('슬롯 할당량 요청이 성공적으로 제출되었습니다. 총판의 승인을 기다려주세요.', 'success')
+        return redirect(url_for('agency_dashboard'))
+    
+    return render_template('agency/request_slot_quota.html', form=form)
 
 # 플레이스 슬롯 관련 라우트
 @app.route('/place-slots/create', methods=['GET', 'POST'])
@@ -1438,8 +1526,6 @@ def create_place_slot():
         return redirect(url_for('agency_place_slots'))
     
     return render_template('agency/create_place_slot.html')
-
-# 슬롯 할당량 요청 라우트
 
 @app.route('/place-slots/upload', methods=['GET', 'POST'])
 @login_required
