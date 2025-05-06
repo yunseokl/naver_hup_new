@@ -1,0 +1,55 @@
+{% extends "layout.html" %}
+
+{% block title %}프로젝트 다운로드 - 네이버 광고 슬롯 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="my-2">네이버 광고 슬롯 관리 시스템 다운로드</h4>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i data-feather="download-cloud" style="width: 64px; height: 64px;"></i>
+                        <h5 class="mt-3">프로젝트 파일 다운로드</h5>
+                        <p class="lead">프로젝트의 모든 소스 코드와 리소스 파일이 압축되어 있습니다.</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6 class="mb-3">포함된 내용:</h6>
+                        <ul class="list-group">
+                            <li class="list-group-item d-flex align-items-center">
+                                <i data-feather="file-text" class="me-2"></i>
+                                <span>메인 애플리케이션 파일 (app.py, main.py, models.py)</span>
+                            </li>
+                            <li class="list-group-item d-flex align-items-center">
+                                <i data-feather="file-text" class="me-2"></i>
+                                <span>템플릿 파일 (HTML 페이지들)</span>
+                            </li>
+                            <li class="list-group-item d-flex align-items-center">
+                                <i data-feather="file-text" class="me-2"></i>
+                                <span>정적 파일 (CSS, JavaScript, 이미지)</span>
+                            </li>
+                            <li class="list-group-item d-flex align-items-center">
+                                <i data-feather="file-text" class="me-2"></i>
+                                <span>프로젝트 설정 파일 (pyproject.toml)</span>
+                            </li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-center">
+                        <a href="{{ url_for('download_project_zip') }}" class="btn btn-primary btn-lg">
+                            <i data-feather="download" class="me-2"></i> 다운로드
+                        </a>
+                    </div>
+                </div>
+                <div class="card-footer text-center text-muted">
+                    <small>파일 크기: 약 500KB</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

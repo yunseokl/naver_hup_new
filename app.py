@@ -6,7 +6,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import HTTPException
 from urllib.parse import urlparse
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, abort, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify, abort, send_file, send_from_directory
 from flask import g, current_app
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
@@ -3083,3 +3083,15 @@ def agency_settlement_detail(settlement_id):
     return render_template('agency/settlement_detail.html',
                           settlement=settlement,
                           items=items)
+
+
+# 다운로드 기능을 위한 라우트
+@app.route('/download')
+def download_page():
+    """프로젝트 다운로드 페이지"""
+    return render_template('downloads/index.html')
+
+@app.route('/download/project.zip')
+def download_project_zip():
+    """프로젝트 파일 다운로드"""
+    return send_from_directory('downloads', 'project.zip')
