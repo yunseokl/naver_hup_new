@@ -2,6 +2,26 @@
 
 {% block title %}쇼핑 슬롯 관리{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+        background-color: #1e2230;
+        color: white;
+    }
+    .table {
+        color: white;
+    }
+    .form-check-input:checked {
+        background-color: var(--bs-success);
+        border-color: var(--bs-success);
+    }
+    .form-switch .form-check-input {
+        width: 2.5em;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid p-4" style="background-color: #1e2230; color: white;">
     <div class="mb-4">
@@ -12,20 +32,20 @@
         
         <!-- 액션 버튼 -->
         <div class="d-flex gap-2 mb-4">
-            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addSlotModal" {% if not can_add_slot %}disabled{% endif %}>
-                쇼핑 슬롯
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSlotModal" {% if not can_add_slot %}disabled{% endif %}>
+                <i data-feather="box" class="me-1" style="width: 18px; height: 18px;"></i> 쇼핑 슬롯
             </button>
-            <button type="button" class="btn btn-secondary">
-                플레이스 슬롯
-            </button>
-            <button type="button" class="btn btn-secondary">
-                엑셀 다운로드
-            </button>
-            <button type="button" class="btn btn-secondary">
-                엑셀 내보내기
-            </button>
+            <a href="{{ url_for('agency_place_slots') }}" class="btn btn-secondary">
+                <i data-feather="map-pin" class="me-1" style="width: 18px; height: 18px;"></i> 플레이스 슬롯
+            </a>
+            <a href="{{ url_for('export_slots', type='shopping') }}" class="btn btn-secondary">
+                <i data-feather="download" class="me-1" style="width: 18px; height: 18px;"></i> 엑셀 다운로드
+            </a>
+            <a href="{{ url_for('upload_shopping_slots') }}" class="btn btn-secondary">
+                <i data-feather="upload" class="me-1" style="width: 18px; height: 18px;"></i> 엑셀 내보내기
+            </a>
             <button type="button" class="btn btn-success" id="bulkSaveButton" {% if shopping_slots|length == 0 %}disabled{% endif %}>
-                슬롯 활성
+                <i data-feather="save" class="me-1" style="width: 18px; height: 18px;"></i> 슬롯 활성
             </button>
         </div>
         
@@ -184,22 +204,22 @@
             {% endif %}
             
             <!-- 쇼핑 슬롯 목록 -->
-            <div class="mt-3">
-                <div class="d-flex justify-content-between align-items-center bg-dark p-3 rounded mb-2">
-                    <h5 class="text-white mb-0">쇼핑 슬롯 목록</h5>
-                    <span class="text-white">총 {{ shopping_slots|length if shopping_slots else 0 }}개</span>
+            <div class="mt-5">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="text-white">쇼핑 슬롯 목록</h5>
+                    <span class="badge bg-light text-dark rounded-pill">총 {{ shopping_slots|length if shopping_slots else 0 }}개</span>
                 </div>
                 <div class="table-responsive">
                     {% if shopping_slots %}
-                    <table class="table table-dark table-hover mb-0 border-secondary">
-                        <thead class="bg-dark">
+                    <table class="table table-dark table-hover mb-0">
+                        <thead>
                             <tr>
-                                <th style="width: 50px;" class="text-center">
+                                <th style="width: 45px;" class="text-center">
                                     <input type="checkbox" class="form-check-input" id="selectAllSlots">
                                 </th>
                                 <th>슬롯명</th>
                                 <th>대행사</th>
-                                <th>스토어 타입</th>
+                                <th>스토어타입</th>
                                 <th>키워드</th>
                                 <th>기간</th>
                                 <th>단가</th>
