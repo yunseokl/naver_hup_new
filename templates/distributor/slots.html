@@ -44,13 +44,13 @@
         width: 100%;
     }
     .editing .editable-text {
-        display: none;
+        display: none !important;
     }
     .editing .edit-input {
         display: block !important;
     }
     .slot-row.editing {
-        background-color: rgba(255, 255, 255, 0.05);
+        background-color: rgba(13, 110, 253, 0.08); /* 편집 중인 행 배경색 */
     }
     /* 아이콘 스타일 */
     .save-slot-btn {
@@ -772,9 +772,30 @@
         document.querySelectorAll('.editable-field').forEach(field => {
             field.addEventListener('click', function() {
                 const row = this.closest('.slot-row');
-                if (!row.classList.contains('editing')) {
-                    const editBtn = row.querySelector('.edit-slot-btn');
-                    if (editBtn) editBtn.click();
+                // 해당 행에 editing 클래스 추가
+                row.classList.add('editing');
+                
+                // 현재 필드의 입력창 표시
+                const editInput = this.querySelector('.edit-input');
+                const editableText = this.querySelector('.editable-text');
+                
+                if (editInput && editableText) {
+                    editableText.style.display = 'none';
+                    editInput.classList.remove('d-none');
+                    editInput.focus();
+                    
+                    // 원본 값 저장 (취소 시 복원용)
+                    if (!editInput.hasAttribute('data-original-value')) {
+                        editInput.setAttribute('data-original-value', editInput.value);
+                    }
+                }
+                
+                // 편집 버튼 숨기고 저장 버튼 표시
+                const editBtn = row.querySelector('.edit-slot-btn');
+                const saveBtn = row.querySelector('.save-slot-btn');
+                if (editBtn && saveBtn) {
+                    editBtn.classList.add('d-none');
+                    saveBtn.classList.remove('d-none');
                 }
             });
         });
