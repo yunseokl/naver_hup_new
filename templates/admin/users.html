@@ -5,9 +5,75 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2><i data-feather="users" class="me-2"></i> 사용자 관리</h2>
-    <a href="{{ url_for('register') }}" class="btn btn-primary">
-        <i data-feather="user-plus" class="me-1"></i> 사용자 등록
-    </a>
+    <div>
+        <a href="#pendingUsers" class="btn btn-warning me-2" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="pendingUsers">
+            <i data-feather="user-check" class="me-1"></i> 승인 대기
+            <span class="badge bg-danger">{{ pending_users|length if pending_users else 0 }}</span>
+        </a>
+        <a href="{{ url_for('register') }}" class="btn btn-primary">
+            <i data-feather="user-plus" class="me-1"></i> 사용자 등록
+        </a>
+    </div>
+</div>
+
+<!-- 승인 대기 중인 사용자 -->
+<div class="collapse mb-4" id="pendingUsers">
+    <div class="card border-warning">
+        <div class="card-header bg-warning text-white">
+            <h5 class="mb-0">승인 대기 중인 사용자</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>사용자명</th>
+                            <th>이메일</th>
+                            <th>회사명</th>
+                            <th>역할</th>
+                            <th>신청일</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if pending_users %}
+                            {% for user in pending_users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.company_name }}</td>
+                                <td>
+                                    <span class="badge {% if user.role.name == 'distributor' %}bg-success{% else %}bg-info{% endif %}">
+                                        {{ '총판' if user.role.name == 'distributor' else '대행사' }}
+                                    </span>
+                                </td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('approve_user', user_id=user.id, action='approve') }}" class="btn btn-outline-success">
+                                            <i data-feather="check"></i> 승인
+                                        </a>
+                                        <a href="{{ url_for('approve_user', user_id=user.id, action='reject') }}" class="btn btn-outline-danger">
+                                            <i data-feather="x"></i> 거절
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    승인 대기 중인 사용자가 없습니다.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
 </div>
 
 <div class="card">

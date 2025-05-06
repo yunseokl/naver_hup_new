@@ -13,6 +13,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from functools import wraps
+from flask_wtf import FlaskForm
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -297,8 +298,30 @@ def admin_dashboard():
 @admin_required
 def users():
     """사용자 관리 페이지"""
-    users = User.query.all()
-    return render_template('admin/users.html', users=users)
+    # 모든 활성화된 사용자 조회
+    users = User.query.filter_by(is_active=True).all()
+    
+    # 승인 대기 중인 사용자 조회
+    pending_users = User.query.filter_by(is_active=False).all()
+    
+    return render_template('admin/users.html', users=users, pending_users=pending_users)
+
+@app.route('/admin/approve-user/<int:user_id>/<action>')
+@admin_required
+def approve_user(user_id, action):
+    """사용자 승인 요청 처리"""
+    user = User.query.get_or_404(user_id)
+    
+    if action == 'approve':
+        user.is_active = True
+        db.session.commit()
+        flash(f'{user.username} 사용자가 승인되었습니다.', 'success')
+    elif action == 'reject':
+        db.session.delete(user)
+        db.session.commit()
+        flash(f'{user.username} 사용자의 가입 요청이 거부되었습니다.', 'danger')
+    
+    return redirect(url_for('users'))
 
 @app.route('/admin/approvals')
 @admin_required
