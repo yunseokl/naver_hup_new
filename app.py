@@ -899,7 +899,8 @@ def create_distributor_slot():
     slot_type = request.form.get('slot_type')
     agency_id = request.form.get('agency_id')
     slot_quantity = int(request.form.get('slot_quantity', 1))
-    slot_price = int(request.form.get('slot_price', 0))
+    # 슬롯 단가는 0원에서 1000원으로 제한
+    slot_price = min(max(int(request.form.get('slot_price', 0)), 0), 1000)
     slot_sub_type = request.form.get('slot_sub_type')
     notes = request.form.get('notes', '')
     

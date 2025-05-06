@@ -313,7 +313,8 @@
                     
                     <div class="mb-3">
                         <label for="slot_price" class="form-label">슬롯 단가 (원) *</label>
-                        <input type="number" class="form-control bg-dark text-white" id="slot_price" name="slot_price" min="0" required>
+                        <input type="number" class="form-control bg-dark text-white" id="slot_price" name="slot_price" min="0" max="1000" required>
+                        <div class="form-text">슬롯 단가는 0원에서 1000원 사이로 입력해주세요.</div>
                     </div>
                     
                     {% if slot_type == 'shopping' %}
@@ -378,7 +379,7 @@
                 document.getElementById('slot_quantity').value = 1;
                 
                 // 기본 슬롯 단가 설정
-                document.getElementById('slot_price').value = 10000;
+                document.getElementById('slot_price').value = 1000;
             });
         }
         
@@ -400,10 +401,10 @@
                     alert('슬롯 수량은 1개 이상이어야 합니다.');
                 }
                 
-                const slotPrice = document.getElementById('slot_price').value;
-                if (slotPrice <= 0) {
+                const slotPrice = parseInt(document.getElementById('slot_price').value);
+                if (slotPrice < 0 || slotPrice > 1000) {
                     event.preventDefault();
-                    alert('슬롯 단가는 0보다 커야 합니다.');
+                    alert('슬롯 단가는 0원에서 1000원 사이여야 합니다.');
                 }
             });
         }
