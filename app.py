@@ -349,11 +349,11 @@ def admin_approve_request(approval_id, action):
         approval.approver_id = current_user.id
         approval.processed_at = datetime.utcnow()
         
-        # 슬롯 상태 업데이트
+        # 슬롯 상태 업데이트 ('approved'에서 'live'로 변경)
         if approval.slot_type == 'shopping':
-            approval.shopping_slot.status = 'approved'
+            approval.shopping_slot.status = 'live'
         else:
-            approval.place_slot.status = 'approved'
+            approval.place_slot.status = 'live'
         
         flash('승인 요청이 수락되었습니다.', 'success')
     
@@ -946,11 +946,11 @@ def distributor_approve_request(approval_id, action):
         approval.approver_id = current_user.id
         approval.processed_at = datetime.utcnow()
         
-        # 슬롯 상태 업데이트
+        # 슬롯 상태 업데이트 ('approved'에서 'live'로 변경)
         if approval.slot_type == 'shopping':
-            approval.shopping_slot.status = 'approved'
+            approval.shopping_slot.status = 'live'
         else:
-            approval.place_slot.status = 'approved'
+            approval.place_slot.status = 'live'
         
         flash('승인 요청이 수락되었습니다.', 'success')
     
