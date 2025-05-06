@@ -104,6 +104,13 @@ def format_number_filter(value):
     except (ValueError, TypeError):
         return "0"
 
+@app.template_filter('nl2br')
+def nl2br_filter(text):
+    """텍스트의 줄바꿈을 HTML <br> 태그로 변환"""
+    if text:
+        return text.replace('\n', '<br>')
+    return ""
+
 # app 초기화 후 바로 실행합니다
 create_tables_and_defaults()
 
@@ -315,6 +322,9 @@ def admin_dashboard():
     # 정산 통계
     pending_settlements = Settlement.query.filter_by(status='pending').count()
     
+    # 환불 요청 통계
+    pending_refunds = SlotRefundRequest.query.filter_by(status='pending').count()
+    
     return render_template('admin/dashboard.html',
                           users_count=users_count,
                           distributors_count=distributors_count,
@@ -322,7 +332,8 @@ def admin_dashboard():
                           pending_approvals=pending_approvals,
                           shopping_slots=shopping_slots,
                           place_slots=place_slots,
-                          pending_settlements=pending_settlements)
+                          pending_settlements=pending_settlements,
+                          pending_refunds=pending_refunds)
 
 @app.route('/admin/users')
 @admin_required

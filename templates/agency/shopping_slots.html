@@ -243,23 +243,39 @@
                                     <td>{{ '{:,}'.format(slot.slot_price) }}원</td>
                                     <td>
                                         {% if slot.status == 'pending' %}
-                                            <span class="badge bg-warning text-dark">거절됨</span>
+                                            <span class="badge bg-warning text-dark">승인 대기</span>
                                         {% elif slot.status == 'approved' %}
                                             <span class="badge bg-success">승인됨</span>
                                         {% elif slot.status == 'live' %}
                                             <span class="badge bg-primary">라이브</span>
                                         {% elif slot.status == 'rejected' %}
                                             <span class="badge bg-danger">거절됨</span>
+                                        {% elif slot.status == 'refund_requested' %}
+                                            <span class="badge bg-warning">환불 요청 중</span>
+                                        {% elif slot.status == 'refunded' %}
+                                            <span class="badge bg-secondary">환불됨</span>
                                         {% else %}
                                             <span class="badge bg-secondary">{{ slot.status }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div class="form-check form-switch d-inline-block">
-                                            <input class="form-check-input" type="checkbox" role="switch" id="slotSwitch{{ slot.id }}" 
-                                                  {% if slot.is_selected %}checked{% endif %}
-                                                  {% if slot.status != 'approved' %}disabled{% endif %}>
-                                        </div>
+                                        {% if slot.status == 'live' %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('request_shopping_slot_refund', slot_id=slot.id) }}" class="btn btn-danger btn-sm">
+                                                    <i data-feather="refresh-cw" class="me-1" style="width: 14px; height: 14px;"></i> 환불 요청
+                                                </a>
+                                            </div>
+                                        {% elif slot.status == 'approved' %}
+                                            <div class="form-check form-switch d-inline-block">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="slotSwitch{{ slot.id }}" 
+                                                    {% if slot.is_selected %}checked{% endif %}>
+                                            </div>
+                                        {% else %}
+                                            <div class="form-check form-switch d-inline-block">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="slotSwitch{{ slot.id }}" 
+                                                    {% if slot.is_selected %}checked{% endif %} disabled>
+                                            </div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 
