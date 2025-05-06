@@ -3,43 +3,55 @@
 {% block title %}쇼핑 슬롯 관리{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col">
-            <h2 class="display-6 mb-3">쇼핑 슬롯 관리</h2>
-            <p class="lead">사용 가능한 쇼핑 슬롯을 관리합니다.</p>
-            
-            <!-- 슬롯 할당량 정보 -->
-            <div class="alert alert-info mb-4" role="alert">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h5 class="alert-heading mb-1">현재 슬롯 할당량</h5>
-                        <p class="mb-0">총 {{ slot_quota.shopping_slots_limit }}개 중 {{ slot_quota.shopping_slots_used }}개 사용 중 (남은 수량: {{ slot_quota.shopping_slots_limit - slot_quota.shopping_slots_used }}개)</p>
-                    </div>
-                    <div>
-                        <a href="{{ url_for('request_slot_quota') }}" class="btn btn-primary">슬롯 추가 요청</a>
-                    </div>
+<div class="container-fluid p-4" style="background-color: #1e2230; color: white;">
+    <div class="mb-4">
+        <div class="d-flex align-items-center mb-3">
+            <i data-feather="shopping-bag" class="me-2"></i>
+            <h3 class="m-0">쇼핑 슬롯 관리</h3>
+        </div>
+        
+        <!-- 액션 버튼 -->
+        <div class="d-flex gap-2 mb-4">
+            <button type="button" class="btn btn-secondary" data-bs-toggle="modal" data-bs-target="#addSlotModal" {% if not can_add_slot %}disabled{% endif %}>
+                쇼핑 슬롯
+            </button>
+            <button type="button" class="btn btn-secondary">
+                플레이스 슬롯
+            </button>
+            <button type="button" class="btn btn-secondary">
+                엑셀 다운로드
+            </button>
+            <button type="button" class="btn btn-secondary">
+                엑셀 내보내기
+            </button>
+            <button type="button" class="btn btn-success" id="bulkSaveButton" {% if shopping_slots|length == 0 %}disabled{% endif %}>
+                슬롯 활성
+            </button>
+        </div>
+        
+        <!-- 검색 필터 -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-2">
+                <label class="form-label">상태</label>
+                <select class="form-select bg-dark text-white">
+                    <option value="all">전체</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-2">
+                <label class="form-label">대행사</label>
+                <select class="form-select bg-dark text-white">
+                    <option value="all">전체</option>
+                </select>
+            </div>
+            <div class="col-md-4 mb-2">
+                <label class="form-label">검색</label>
+                <div class="input-group">
+                    <input type="text" class="form-control bg-dark text-white" placeholder="슬롯명, 키워드 등 검색">
+                    <button class="btn btn-primary" type="button">검색</button>
+                    <button class="btn btn-outline-secondary" type="button">초기화</button>
                 </div>
             </div>
-            
-            <!-- 액션 버튼 -->
-            <div class="d-flex flex-wrap gap-2 mb-4">
-                <a href="{{ url_for('upload_shopping_slots') }}" class="btn btn-success">
-                    <i data-feather="upload"></i> 일괄 업로드
-                </a>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSlotModal" {% if not can_add_slot %}disabled{% endif %}>
-                    <i data-feather="plus"></i> 슬롯 추가
-                </button>
-                <button type="button" class="btn btn-warning" id="bulkSaveButton" {% if shopping_slots|length == 0 %}disabled{% endif %}>
-                    <i data-feather="save"></i> 일괄 저장
-                </button>
-                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#bulkDeleteModal" {% if shopping_slots|length == 0 %}disabled{% endif %}>
-                    <i data-feather="trash-2"></i> 전체 삭제
-                </button>
-                <a href="{{ url_for('export_slots', type='shopping') }}" class="btn btn-outline-secondary">
-                    <i data-feather="download"></i> 양식 다운로드
-                </a>
-            </div>
+        </div>
             
             <!-- 빈 슬롯 테이블 -->
             {% if empty_slots %}
@@ -171,47 +183,47 @@
             </div>
             {% endif %}
             
-            <!-- 일반 슬롯 테이블 -->
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">쇼핑 슬롯 목록</h5>
+            <!-- 쇼핑 슬롯 목록 -->
+            <div class="mt-3">
+                <div class="d-flex justify-content-between align-items-center bg-dark p-3 rounded mb-2">
+                    <h5 class="text-white mb-0">쇼핑 슬롯 목록</h5>
+                    <span class="text-white">총 {{ shopping_slots|length if shopping_slots else 0 }}개</span>
                 </div>
-                <div class="card-body p-0">
+                <div class="table-responsive">
                     {% if shopping_slots %}
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th style="width: 60px;" class="text-center">선택</th>
-                                    <th>슬롯 이름</th>
-                                    <th>스토어 타입</th>
-                                    <th>상품명</th>
-                                    <th>스토어명</th>
-                                    <th>가격</th>
-                                    <th>기간</th>
-                                    <th>상태</th>
-                                    <th>관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                    <table class="table table-dark table-hover mb-0 border-secondary">
+                        <thead class="bg-dark">
+                            <tr>
+                                <th style="width: 50px;" class="text-center">
+                                    <input type="checkbox" class="form-check-input" id="selectAllSlots">
+                                </th>
+                                <th>슬롯명</th>
+                                <th>대행사</th>
+                                <th>스토어 타입</th>
+                                <th>키워드</th>
+                                <th>기간</th>
+                                <th>단가</th>
+                                <th>상태</th>
+                                <th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody>
                                 {% for slot in shopping_slots %}
                                 <tr>
                                     <td class="text-center">
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox" name="selected_slots" value="{{ slot.id }}" 
-                                                   {% if slot.is_selected %}checked{% endif %}
-                                                   {% if slot.status != 'approved' %}disabled{% endif %}>
-                                        </div>
+                                        <input class="form-check-input slot-checkbox" type="checkbox" name="selected_slots" value="{{ slot.id }}" 
+                                               {% if slot.is_selected %}checked{% endif %}
+                                               {% if slot.status != 'approved' %}disabled{% endif %}>
                                     </td>
                                     <td>{{ slot.slot_name }}</td>
-                                    <td>{{ slot.store_type }}</td>
-                                    <td>{{ slot.product_name }}</td>
-                                    <td>{{ slot.store_name }}</td>
-                                    <td>{{ slot.price }}</td>
+                                    <td>이이이</td>
+                                    <td>{{ slot.store_type or 'None' }}</td>
+                                    <td>{{ slot.keywords[:20] + '...' if slot.keywords and slot.keywords|length > 20 else slot.keywords or 'None' }}</td>
                                     <td>{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '-' }} ~ {{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '-' }}</td>
+                                    <td>{{ '{:,}'.format(slot.slot_price) }}원</td>
                                     <td>
                                         {% if slot.status == 'pending' %}
-                                            <span class="badge bg-warning">승인 대기중</span>
+                                            <span class="badge bg-warning text-dark">거절됨</span>
                                         {% elif slot.status == 'approved' %}
                                             <span class="badge bg-success">승인됨</span>
                                         {% elif slot.status == 'live' %}
@@ -223,13 +235,10 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSlotModal{{ slot.id }}">
-                                                <i class="icon icon-edit"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSlotModal{{ slot.id }}">
-                                                <i class="icon icon-trash"></i>
-                                            </button>
+                                        <div class="form-check form-switch d-inline-block">
+                                            <input class="form-check-input" type="checkbox" role="switch" id="slotSwitch{{ slot.id }}" 
+                                                  {% if slot.is_selected %}checked{% endif %}
+                                                  {% if slot.status != 'approved' %}disabled{% endif %}>
                                         </div>
                                     </td>
                                 </tr>
@@ -578,6 +587,52 @@
                 });
             });
         }
+        
+        // 전체 삭제 기능
+        $('#confirmBulkDelete').click(function() {
+            fetch('/bulk-delete-shopping-slots', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.count + '개의 슬롯이 삭제되었습니다.');
+                    window.location.reload();
+                } else {
+                    alert('삭제 실패: ' + (data.message || '알 수 없는 오류'));
+                }
+                $('#bulkDeleteModal').modal('hide');
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('오류가 발생했습니다.');
+                $('#bulkDeleteModal').modal('hide');
+            });
+        });
     });
 </script>
+
+<!-- 전체 삭제 확인 모달 -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-white">
+            <div class="modal-header bg-danger">
+                <h5 class="modal-title" id="bulkDeleteModalLabel">전체 슬롯 삭제 확인</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>모든 쇼핑 슬롯을 삭제하시겠습니까?</p>
+                <p class="text-danger fw-bold">이 작업은 되돌릴 수 없으며, 모든 슬롯 데이터가 영구적으로 삭제됩니다.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-danger" id="confirmBulkDelete">삭제</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
