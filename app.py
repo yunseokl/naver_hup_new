@@ -735,6 +735,63 @@ def admin_delete_place_slot(slot_id):
     
     return redirect(url_for('admin_place_slots'))
 
+@app.route('/admin/bulk-approve', methods=['POST'])
+@login_required
+@admin_required
+def admin_bulk_approve():
+    """일괄 승인/거절 처리"""
+    # 요청 데이터 가져오기
+    data = request.json
+    approval_ids = data.get('approval_ids', [])
+    action = data.get('action', 'approve')  # 'approve' 또는 'reject'
+    
+    if not approval_ids:
+        return jsonify({'success': False, 'message': '선택된 항목이 없습니다.'}), 400
+    
+    # 승인 요청 조회
+    approvals = SlotApproval.query.filter(
+        SlotApproval.id.in_(approval_ids),
+        SlotApproval.status == 'pending'  # 대기 중인 요청만 처리
+    ).all()
+    
+    if not approvals:
+        return jsonify({'success': False, 'message': '처리할 승인 요청을 찾을 수 없습니다.'}), 404
+    
+    # 일괄 처리
+    processed_count = 0
+    for approval in approvals:
+        # 승인 또는 거절 처리
+        if action == 'approve':
+            approval.status = 'approved'
+            approval.approver_id = current_user.id
+            approval.processed_at = datetime.utcnow()
+            
+            # 슬롯 상태 업데이트 ('approved'에서 'live'로 변경)
+            if approval.slot_type == 'shopping':
+                approval.shopping_slot.status = 'live'
+            else:
+                approval.place_slot.status = 'live'
+        else:
+            approval.status = 'rejected'
+            approval.approver_id = current_user.id
+            approval.processed_at = datetime.utcnow()
+            
+            # 슬롯 상태 업데이트
+            if approval.slot_type == 'shopping':
+                approval.shopping_slot.status = 'rejected'
+            else:
+                approval.place_slot.status = 'rejected'
+                
+        processed_count += 1
+    
+    db.session.commit()
+    
+    return jsonify({
+        'success': True, 
+        'count': processed_count,
+        'message': f"{processed_count}개의 요청이 {'승인' if action == 'approve' else '거절'}되었습니다."
+    })
+
 @app.route('/admin/approve/<int:approval_id>/<action>')
 @admin_required
 def admin_approve_request(approval_id, action):

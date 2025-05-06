@@ -355,12 +355,51 @@
         confirmBulkBtn.addEventListener('click', function() {
             const selectedIds = Array.from(approvalCheckboxes)
                 .filter(checkbox => checkbox.checked)
-                .map(checkbox => checkbox.value);
+                .map(checkbox => parseInt(checkbox.value));
             
-            // AJAX로 일괄 승인/거절 요청 구현 필요
-            // 현재는 알림만 표시
-            alert(`선택한 ${selectedIds.length}개의 요청을 ${bulkAction === 'approve' ? '승인' : '거절'} 처리합니다.`);
-            bulkApprovalModal.hide();
+            if (selectedIds.length === 0) {
+                alert('선택된 항목이 없습니다.');
+                return;
+            }
+            
+            // 로딩 상태 표시
+            confirmBulkBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 처리 중...';
+            confirmBulkBtn.disabled = true;
+            
+            // AJAX 요청으로 일괄 승인/거절 처리
+            fetch('/admin/bulk-approve', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    approval_ids: selectedIds,
+                    action: bulkAction
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 성공 메시지 표시
+                    alert(data.message);
+                    // 페이지 새로고침
+                    window.location.reload();
+                } else {
+                    // 오류 메시지 표시
+                    alert('오류가 발생했습니다: ' + data.message);
+                    confirmBulkBtn.innerHTML = '확인';
+                    confirmBulkBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('처리 중 오류가 발생했습니다.');
+                confirmBulkBtn.innerHTML = '확인';
+                confirmBulkBtn.disabled = false;
+            })
+            .finally(() => {
+                bulkApprovalModal.hide();
+            });
         });
         
         function getSelectedCount() {
