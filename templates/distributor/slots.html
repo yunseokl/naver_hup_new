@@ -287,11 +287,17 @@
                     <div class="mb-3">
                         <label for="agency_id" class="form-label">대행사 *</label>
                         <select class="form-select bg-dark text-white" id="agency_id" name="agency_id" required>
-                            <option value="">대행사 선택</option>
-                            {% for agency in agencies %}
-                            <option value="{{ agency.id }}">{{ agency.company_name }}</option>
-                            {% endfor %}
+                            {% if agencies %}
+                                {% for agency in agencies %}
+                                <option value="{{ agency.id }}" {% if loop.first %}selected{% endif %}>{{ agency.company_name }}</option>
+                                {% endfor %}
+                            {% else %}
+                                <option value="" disabled>소속 대행사가 없습니다</option>
+                            {% endif %}
                         </select>
+                        {% if not agencies %}
+                        <small class="text-danger">대행사를 먼저 추가해주세요</small>
+                        {% endif %}
                     </div>
                     
                     <div class="mb-3">
@@ -357,6 +363,27 @@
             selectAllCheckbox.addEventListener('change', function() {
                 const checkboxes = document.querySelectorAll('input[name="selected_slots"]');
                 checkboxes.forEach(checkbox => checkbox.checked = this.checked);
+            });
+        }
+        
+        // 슬롯 할당 모달에 기본값 설정
+        const slotQuotaModal = document.getElementById('slotQuotaModal');
+        if (slotQuotaModal) {
+            slotQuotaModal.addEventListener('show.bs.modal', function() {
+                // 오늘 날짜 설정
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('start_date').value = today;
+                
+                // 한 달 후 날짜 계산하여 종료일에 설정
+                let end = new Date();
+                end.setMonth(end.getMonth() + 1);
+                document.getElementById('end_date').value = end.toISOString().split('T')[0];
+                
+                // 기본 슬롯 수량 설정
+                document.getElementById('slot_quantity').value = 1;
+                
+                // 기본 슬롯 단가 설정
+                document.getElementById('slot_price').value = 10000;
             });
         }
         
