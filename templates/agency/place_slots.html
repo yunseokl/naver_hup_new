@@ -200,19 +200,36 @@
                                             <span class="badge bg-primary">라이브</span>
                                         {% elif slot.status == 'rejected' %}
                                             <span class="badge bg-danger">거절됨</span>
+                                        {% elif slot.status == 'refund_requested' %}
+                                            <span class="badge bg-warning">환불 요청 중</span>
+                                        {% elif slot.status == 'refunded' %}
+                                            <span class="badge bg-secondary">환불됨</span>
                                         {% else %}
                                             <span class="badge bg-secondary">{{ slot.status }}</span>
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSlotModal{{ slot.id }}">
-                                                <i class="icon icon-edit"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSlotModal{{ slot.id }}">
-                                                <i class="icon icon-trash"></i>
-                                            </button>
-                                        </div>
+                                        {% if slot.status == 'live' %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <a href="{{ url_for('request_place_slot_refund', slot_id=slot.id) }}" class="btn btn-danger btn-sm">
+                                                    <i data-feather="refresh-cw" class="me-1" style="width: 14px; height: 14px;"></i> 환불 요청
+                                                </a>
+                                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSlotModal{{ slot.id }}">
+                                                    <i class="icon icon-edit"></i>
+                                                </button>
+                                            </div>
+                                        {% else %}
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editSlotModal{{ slot.id }}">
+                                                    <i class="icon icon-edit"></i>
+                                                </button>
+                                                {% if slot.status != 'refund_requested' and slot.status != 'refunded' %}
+                                                <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteSlotModal{{ slot.id }}">
+                                                    <i class="icon icon-trash"></i>
+                                                </button>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
                                     </td>
                                 </tr>
                                 
