@@ -1071,8 +1071,30 @@ def agency_place_slots():
     if not current_user.is_agency():
         abort(403)
     
-    place_slots = current_user.place_slots.all()
-    return render_template('agency/place_slots.html', place_slots=place_slots)
+    # 사용자의 슬롯 할당량 정보 가져오기
+    slot_quota = current_user.quota
+    if not slot_quota:
+        # 할당량 정보가 없으면 새로 생성
+        slot_quota = SlotQuota(
+            user_id=current_user.id,
+            shopping_slots_limit=0,
+            place_slots_limit=0,
+            shopping_slots_used=0,
+            place_slots_used=0
+        )
+        db.session.add(slot_quota)
+        db.session.commit()
+    
+    # 새 슬롯을 추가할 수 있는지 확인
+    can_add_slot = slot_quota.can_use_place_slot()
+    
+    # 플레이스 슬롯 목록 가져오기 (최신순)
+    place_slots = current_user.place_slots.order_by(PlaceSlot.created_at.desc()).all()
+    
+    return render_template('agency/place_slots.html', 
+                          place_slots=place_slots, 
+                          slot_quota=slot_quota,
+                          can_add_slot=can_add_slot)
 
 # 쇼핑 슬롯 관련 라우트
 @app.route('/shopping-slots/select/<int:slot_id>', methods=['POST'])
@@ -1231,12 +1253,13 @@ def create_shopping_slot():
         slot_name = request.form.get('slot_name')
         store_type = request.form.get('store_type')
         product_id = request.form.get('product_id')
-        shopping_campaign_id = request.form.get('shopping_campaign_id')
         product_name = request.form.get('product_name')
         keywords = request.form.get('keywords')
-        store_name = request.form.get('store_name')
         price = request.form.get('price')
         sale_price = request.form.get('sale_price')
+        bid_type = request.form.get('bid_type')
+        slot_price = request.form.get('slot_price')
+        notes = request.form.get('notes')
         
         # 날짜 처리
         start_date = request.form.get('start_date')
@@ -1247,8 +1270,10 @@ def create_shopping_slot():
         if end_date:
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
-        bid_type = request.form.get('bid_type')
-        targeting = request.form.get('targeting')
+        # 할당량 확인
+        if not current_user.quota or not current_user.quota.can_use_shopping_slot():
+            flash('사용 가능한 쇼핑 슬롯 할당량이 없습니다. 총판에게 추가 할당량을 요청하세요.', 'danger')
+            return redirect(url_for('agency_shopping_slots'))
         
         # 슬롯 생성
         shopping_slot = ShoppingSlot(
@@ -1256,16 +1281,15 @@ def create_shopping_slot():
             slot_name=slot_name,
             store_type=store_type,
             product_id=product_id,
-            shopping_campaign_id=shopping_campaign_id,
             product_name=product_name,
             keywords=keywords,
-            store_name=store_name,
             price=price if price else None,
             sale_price=sale_price if sale_price else None,
             start_date=start_date,
             end_date=end_date,
             bid_type=bid_type,
-            targeting=targeting,
+            slot_price=slot_price if slot_price else None,
+            notes=notes,
             product_image_url="/static/img/placeholder-product.svg"
         )
         
@@ -1280,6 +1304,11 @@ def create_shopping_slot():
         )
         
         db.session.add(approval)
+        
+        # 사용된 슬롯 카운트 증가
+        if current_user.quota:
+            current_user.quota.shopping_slots_used += 1
+        
         db.session.commit()
         
         flash('쇼핑 슬롯이 생성되었고 승인 요청이 제출되었습니다.', 'success')
@@ -1503,8 +1532,9 @@ def create_place_slot():
         place_name = request.form.get('place_name')
         address = request.form.get('address')
         operation_status = request.form.get('operation_status')
-        status_reason = request.form.get('status_reason')
-        status_detail = request.form.get('status_detail')
+        slot_type = request.form.get('slot_type', 'search')  # search 또는 save
+        slot_price = request.form.get('slot_price')
+        notes = request.form.get('notes')
         
         # 날짜 처리
         start_date = request.form.get('start_date')
@@ -1519,6 +1549,11 @@ def create_place_slot():
         if deadline_date:
             deadline_date = datetime.strptime(deadline_date, '%Y-%m-%d').date()
         
+        # 할당량 확인
+        if not current_user.quota or not current_user.quota.can_use_place_slot():
+            flash('사용 가능한 플레이스 슬롯 할당량이 없습니다. 총판에게 추가 할당량을 요청하세요.', 'danger')
+            return redirect(url_for('agency_place_slots'))
+        
         # 슬롯 생성
         place_slot = PlaceSlot(
             user_id=current_user.id,
@@ -1529,8 +1564,9 @@ def create_place_slot():
             place_name=place_name,
             address=address,
             operation_status=operation_status,
-            status_reason=status_reason,
-            status_detail=status_detail,
+            slot_type=slot_type,
+            slot_price=slot_price if slot_price else None,
+            notes=notes,
             start_date=start_date,
             end_date=end_date,
             deadline_date=deadline_date
@@ -1547,6 +1583,11 @@ def create_place_slot():
         )
         
         db.session.add(approval)
+        
+        # 사용된 슬롯 카운트 증가
+        if current_user.quota:
+            current_user.quota.place_slots_used += 1
+            
         db.session.commit()
         
         flash('플레이스 슬롯이 생성되었고 승인 요청이 제출되었습니다.', 'success')
