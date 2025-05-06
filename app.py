@@ -61,7 +61,7 @@ login_manager.login_message = '이 페이지에 접근하려면 로그인이 필
 login_manager.login_message_category = 'warning'
 
 # Import models after initializing db to avoid circular imports
-from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval, SlotQuota, SlotQuotaRequest, Settlement, SettlementItem
+from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval, SlotQuota, SlotQuotaRequest, Settlement, SettlementItem, SlotRefundRequest
 
 # 초기화 함수를 생성합니다
 def create_tables_and_defaults():
@@ -2111,6 +2111,262 @@ def select_shopping_slot(slot_id):
     db.session.commit()
     
     return jsonify({'success': True})
+
+
+# 환불 요청 라우트
+@app.route('/refund/shopping-slot/<int:slot_id>', methods=['GET', 'POST'])
+@login_required
+def request_shopping_slot_refund(slot_id):
+    """쇼핑 슬롯 환불 요청"""
+    # 슬롯 정보 가져오기
+    slot = ShoppingSlot.query.get_or_404(slot_id)
+    
+    # 슬롯 소유자 또는 소유자의 총판만 접근 가능
+    if slot.user_id != current_user.id and not (current_user.is_distributor() and slot.user.parent_id == current_user.id):
+        flash('이 슬롯에 대한 환불 요청 권한이 없습니다.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # 라이브 상태인 슬롯만 환불 가능
+    if slot.status != 'live':
+        flash('라이브 상태인 슬롯만 환불 요청할 수 있습니다.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    form = FlaskForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
+        # 요청 정보 가져오기
+        refund_reason = request.form.get('refund_reason')
+        
+        # 환불 금액 계산
+        today = datetime.now().date()
+        start_date = slot.start_date or today
+        end_date = slot.end_date or today
+        
+        # 전체 일수
+        total_days = (end_date - start_date).days + 1
+        
+        # 남은 일수 계산 (오늘부터 종료일까지)
+        remaining_days = (end_date - today).days + 1 if end_date >= today else 0
+        
+        # 환불 금액 계산 (일별 비례)
+        refund_amount = 0
+        if total_days > 0 and remaining_days > 0:
+            refund_amount = int((slot.slot_price / total_days) * remaining_days)
+        
+        # 환불 요청 생성
+        refund_request = SlotRefundRequest(
+            requester_id=current_user.id,
+            shopping_slot_id=slot.id,
+            refund_reason=refund_reason,
+            refund_amount=refund_amount,
+            remaining_days=remaining_days,
+            total_days=total_days,
+            status='pending'
+        )
+        
+        # 슬롯 상태 변경
+        slot.status = 'refund_requested'
+        
+        db.session.add(refund_request)
+        db.session.commit()
+        
+        flash('환불 요청이 등록되었습니다. 관리자 검토 후 처리됩니다.', 'success')
+        
+        # 요청자 타입에 따른 리다이렉트
+        if current_user.is_distributor():
+            return redirect(url_for('distributor_slots', type='shopping'))
+        else:  # 대행사
+            return redirect(url_for('agency_shopping_slots'))
+    
+    return render_template('refund/request_shopping_refund.html', form=form, slot=slot)
+
+
+@app.route('/refund/place-slot/<int:slot_id>', methods=['GET', 'POST'])
+@login_required
+def request_place_slot_refund(slot_id):
+    """플레이스 슬롯 환불 요청"""
+    # 슬롯 정보 가져오기
+    slot = PlaceSlot.query.get_or_404(slot_id)
+    
+    # 슬롯 소유자 또는 소유자의 총판만 접근 가능
+    if slot.user_id != current_user.id and not (current_user.is_distributor() and slot.user.parent_id == current_user.id):
+        flash('이 슬롯에 대한 환불 요청 권한이 없습니다.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    # 라이브 상태인 슬롯만 환불 가능
+    if slot.status != 'live':
+        flash('라이브 상태인 슬롯만 환불 요청할 수 있습니다.', 'danger')
+        return redirect(url_for('dashboard'))
+    
+    form = FlaskForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
+        # 요청 정보 가져오기
+        refund_reason = request.form.get('refund_reason')
+        
+        # 환불 금액 계산
+        today = datetime.now().date()
+        start_date = slot.start_date or today
+        end_date = slot.end_date or today
+        
+        # 전체 일수
+        total_days = (end_date - start_date).days + 1
+        
+        # 남은 일수 계산 (오늘부터 종료일까지)
+        remaining_days = (end_date - today).days + 1 if end_date >= today else 0
+        
+        # 환불 금액 계산 (일별 비례)
+        refund_amount = 0
+        if total_days > 0 and remaining_days > 0:
+            refund_amount = int((slot.slot_price / total_days) * remaining_days)
+        
+        # 환불 요청 생성
+        refund_request = SlotRefundRequest(
+            requester_id=current_user.id,
+            place_slot_id=slot.id,
+            refund_reason=refund_reason,
+            refund_amount=refund_amount,
+            remaining_days=remaining_days,
+            total_days=total_days,
+            status='pending'
+        )
+        
+        # 슬롯 상태 변경
+        slot.status = 'refund_requested'
+        
+        db.session.add(refund_request)
+        db.session.commit()
+        
+        flash('환불 요청이 등록되었습니다. 관리자 검토 후 처리됩니다.', 'success')
+        
+        # 요청자 타입에 따른 리다이렉트
+        if current_user.is_distributor():
+            return redirect(url_for('distributor_slots', type='place'))
+        else:  # 대행사
+            return redirect(url_for('agency_place_slots'))
+    
+    return render_template('refund/request_place_refund.html', form=form, slot=slot)
+
+
+# 어드민 환불 관리
+@app.route('/admin/refunds')
+@admin_required
+def admin_refunds():
+    """관리자 환불 요청 관리 페이지"""
+    # 대기 중인 환불 요청
+    pending_refunds = SlotRefundRequest.query.filter_by(status='pending').all()
+    
+    # 처리된 환불 요청 (승인/거절)
+    processed_refunds = SlotRefundRequest.query.filter(
+        SlotRefundRequest.status.in_(['approved', 'rejected'])
+    ).order_by(SlotRefundRequest.processed_at.desc()).limit(30).all()
+    
+    return render_template('admin/refunds.html', 
+                         pending_refunds=pending_refunds, 
+                         processed_refunds=processed_refunds)
+
+
+@app.route('/admin/approve-refund/<int:refund_id>/<action>')
+@admin_required
+def admin_approve_refund(refund_id, action):
+    """관리자의 환불 요청 승인/거절 처리"""
+    # 환불 요청 정보 가져오기
+    refund = SlotRefundRequest.query.get_or_404(refund_id)
+    
+    # 이미 처리된 요청인지 확인
+    if refund.status != 'pending':
+        flash('이미 처리된 환불 요청입니다.', 'warning')
+        return redirect(url_for('admin_refunds'))
+    
+    # 슬롯 정보 가져오기
+    slot = refund.slot
+    
+    if action == 'approve':
+        # 환불 승인 처리
+        refund.status = 'approved'
+        refund.approver_id = current_user.id
+        refund.processed_at = datetime.utcnow()
+        
+        # 슬롯 상태 변경
+        slot.status = 'refunded'
+        
+        # 정산 처리 (환불금액을 정산 입력으로 추가)
+        # 환불 자동 생성 (이번 달 기준)
+        today = datetime.now().date()
+        month_start = today.replace(day=1)
+        if today.month == 12:
+            next_month = today.replace(year=today.year + 1, month=1, day=1)
+        else:
+            next_month = today.replace(month=today.month + 1, day=1)
+        month_end = next_month - timedelta(days=1)
+        
+        # 환불 정산 생성
+        refund_settlement = Settlement(
+            user_id=slot.user_id,
+            admin_id=current_user.id,
+            settlement_type='refund',
+            period_start=month_start,
+            period_end=month_end,
+            status='pending',
+            notes=f"환불 요청 승인 ({today} 생성)"
+        )
+        db.session.add(refund_settlement)
+        db.session.flush()  # ID 생성
+        
+        # 환불 정산 항목 추가
+        if refund.shopping_slot_id:
+            settlement_item = SettlementItem(
+                settlement_id=refund_settlement.id,
+                shopping_slot_id=refund.shopping_slot_id,
+                slot_price=slot.slot_price,
+                admin_price=slot.admin_price,
+                settlement_price=-refund.refund_amount,  # 음수로 저장 (환불)
+                is_refund=True,
+                refund_amount=refund.refund_amount
+            )
+        else:
+            settlement_item = SettlementItem(
+                settlement_id=refund_settlement.id,
+                place_slot_id=refund.place_slot_id,
+                slot_price=slot.slot_price,
+                admin_price=slot.admin_price,
+                settlement_price=-refund.refund_amount,  # 음수로 저장 (환불)
+                is_refund=True,
+                refund_amount=refund.refund_amount
+            )
+        
+        db.session.add(settlement_item)
+        
+        # 환불 요청과 정산 연결
+        refund.settlement_id = refund_settlement.id
+        
+        # 정산 금액 업데이트
+        refund_settlement.total_price = -refund.refund_amount
+        
+        # 어드민/에이전시 비율에 따른 가격 분배
+        if slot.admin_price:
+            admin_ratio = slot.admin_price / slot.slot_price
+            refund_settlement.admin_price = -int(refund.refund_amount * admin_ratio)
+            refund_settlement.agency_price = -int(refund.refund_amount * (1 - admin_ratio))
+        else:
+            refund_settlement.admin_price = 0
+            refund_settlement.agency_price = -refund.refund_amount
+        
+        flash(f'환불 요청이 승인되었습니다. 환불 금액: {refund.refund_amount:,}원', 'success')
+    
+    elif action == 'reject':
+        # 환불 거절 처리
+        refund.status = 'rejected'
+        refund.approver_id = current_user.id
+        refund.processed_at = datetime.utcnow()
+        
+        # 슬롯 상태 원복
+        slot.status = 'live'
+        
+        flash('환불 요청이 거절되었습니다.', 'success')
+    
+    db.session.commit()
+    return redirect(url_for('admin_refunds'))
 
 @app.route('/shopping-slots/edit/<int:slot_id>', methods=['POST'])
 @login_required

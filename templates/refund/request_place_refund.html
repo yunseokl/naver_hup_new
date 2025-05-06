@@ -1,0 +1,107 @@
+{% extends 'layout.html' %}
+
+{% block title %}플레이스 슬롯 환불 요청{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+  <div class="card shadow-sm">
+    <div class="card-header bg-dark">
+      <h5 class="mb-0 text-white">플레이스 슬롯 환불 요청</h5>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info">
+        <i class="feather-info mr-2"></i> 환불 요청 시 슬롯 상태가 변경되며, 관리자의 승인 후 환불이 진행됩니다.
+        남은 기간에 비례하여 환불금이 계산됩니다.
+      </div>
+      
+      <div class="mb-4">
+        <h6 class="mb-3">슬롯 정보</h6>
+        <table class="table table-sm table-bordered">
+          <tr>
+            <th style="width: 150px;">슬롯 이름</th>
+            <td>{{ slot.slot_name }}</td>
+          </tr>
+          <tr>
+            <th>장소명</th>
+            <td>{{ slot.place_name }}</td>
+          </tr>
+          <tr>
+            <th>주소</th>
+            <td>{{ slot.address }}</td>
+          </tr>
+          <tr>
+            <th>슬롯 유형</th>
+            <td>{% if slot.slot_type == 'search' %}검색 유입{% else %}저장{% endif %}</td>
+          </tr>
+          <tr>
+            <th>슬롯 기간</th>
+            <td>{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '미지정' }} ~ {{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '미지정' }}</td>
+          </tr>
+          <tr>
+            <th>슬롯 단가</th>
+            <td>{{ slot.slot_price|format_number }}원</td>
+          </tr>
+        </table>
+      </div>
+      
+      <div class="mb-4">
+        <h6 class="mb-3">환불 예상 정보</h6>
+        <div class="card bg-dark text-white">
+          <div class="card-body">
+            {% set today = now().date() %}
+            {% set start_date = slot.start_date or today %}
+            {% set end_date = slot.end_date or today %}
+            {% set total_days = (end_date - start_date).days + 1 %}
+            {% set remaining_days = (end_date - today).days + 1 if end_date >= today else 0 %}
+            {% set refund_amount = ((slot.slot_price / total_days) * remaining_days)|int if total_days > 0 and remaining_days > 0 else 0 %}
+            
+            <div class="row">
+              <div class="col-md-4">
+                <div class="text-center mb-3">
+                  <h5>전체 기간</h5>
+                  <div class="display-4">{{ total_days }}일</div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="text-center mb-3">
+                  <h5>남은 기간</h5>
+                  <div class="display-4">{{ remaining_days }}일</div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="text-center mb-3">
+                  <h5>환불 예상 금액</h5>
+                  <div class="display-4">{{ refund_amount|format_number }}원</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <form action="{{ url_for('request_place_slot_refund', slot_id=slot.id) }}" method="post" class="mt-4">
+        {{ form.hidden_tag() }}
+        
+        <div class="form-group">
+          <label for="refund_reason">환불 사유</label>
+          <textarea id="refund_reason" name="refund_reason" class="form-control" rows="4" required></textarea>
+          <small class="form-text text-muted">환불 사유를 자세하게 작성해주세요.</small>
+        </div>
+        
+        <div class="alert alert-warning">
+          <i class="feather-alert-triangle mr-2"></i> 환불 요청 후에는 취소할 수 없습니다. 신중하게 결정해주세요.
+        </div>
+        
+        <div class="d-flex justify-content-between mt-4">
+          <a href="javascript:history.back()" class="btn btn-secondary">
+            <i class="feather-chevron-left"></i> 돌아가기
+          </a>
+          <button type="submit" class="btn btn-danger">
+            <i class="feather-dollar-sign"></i> 환불 요청하기
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
