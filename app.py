@@ -52,7 +52,7 @@ login_manager.login_message = '이 페이지에 접근하려면 로그인이 필
 login_manager.login_message_category = 'warning'
 
 # Import models after initializing db to avoid circular imports
-from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval, SlotQuota, Settlement, SettlementItem
+from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval, SlotQuota, SlotQuotaRequest, Settlement, SettlementItem
 
 # 초기화 함수를 생성합니다
 def create_tables_and_defaults():
@@ -915,6 +915,24 @@ def agency_dashboard():
     approved_place_slots = current_user.place_slots.filter_by(status='approved').count()
     rejected_place_slots = current_user.place_slots.filter_by(status='rejected').count()
     
+    # 슬롯 할당량 정보
+    slot_quota = current_user.quota
+    if not slot_quota:
+        # 할당량 정보가 없으면 새로 생성
+        slot_quota = SlotQuota(
+            user_id=current_user.id,
+            shopping_slots_limit=0,
+            place_slots_limit=0,
+            shopping_slots_used=0,
+            place_slots_used=0
+        )
+        db.session.add(slot_quota)
+        db.session.commit()
+    
+    # 슬롯 할당량 요청 정보
+    quota_requests = SlotQuotaRequest.query.filter_by(requester_id=current_user.id).order_by(SlotQuotaRequest.requested_at.desc()).limit(5).all()
+    pending_quota_requests = SlotQuotaRequest.query.filter_by(requester_id=current_user.id, status='pending').count()
+    
     return render_template('agency/dashboard.html',
                           shopping_slots_count=shopping_slots_count,
                           place_slots_count=place_slots_count,
@@ -923,7 +941,10 @@ def agency_dashboard():
                           rejected_shopping_slots=rejected_shopping_slots,
                           pending_place_slots=pending_place_slots,
                           approved_place_slots=approved_place_slots,
-                          rejected_place_slots=rejected_place_slots)
+                          rejected_place_slots=rejected_place_slots,
+                          slot_quota=slot_quota,
+                          quota_requests=quota_requests,
+                          pending_quota_requests=pending_quota_requests)
 
 @app.route('/agency/shopping-slots')
 @login_required
@@ -1189,6 +1210,74 @@ def create_place_slot():
         return redirect(url_for('agency_place_slots'))
     
     return render_template('agency/create_place_slot.html')
+
+@app.route('/agency/request-slot-quota', methods=['GET', 'POST'])
+@login_required
+@agency_required
+def request_slot_quota():
+    """대행사의 슬롯 할당량 요청 페이지"""
+    form = FlaskForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
+        # 폼 데이터 가져오기
+        shopping_slots = int(request.form.get('shopping_slots_requested', 0))
+        place_slots = int(request.form.get('place_slots_requested', 0))
+        shopping_slot_type = request.form.get('shopping_slot_type')
+        place_slot_type = request.form.get('place_slot_type')
+        start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        request_reason = request.form.get('request_reason')
+        
+        # 요청 데이터 검증
+        if shopping_slots <= 0 and place_slots <= 0:
+            flash('최소 1개 이상의 슬롯을 요청해야 합니다.', 'warning')
+            return redirect(url_for('request_slot_quota'))
+        
+        if end_date <= start_date:
+            flash('종료일은 시작일 이후여야 합니다.', 'warning')
+            return redirect(url_for('request_slot_quota'))
+        
+        # 총판 정보 가져오기
+        distributor = User.query.get(current_user.parent_id)
+        if not distributor:
+            flash('소속 총판 정보를 찾을 수 없습니다.', 'danger')
+            return redirect(url_for('agency_dashboard'))
+        
+        # 새 요청 생성
+        quota_request = SlotQuotaRequest(
+            requester_id=current_user.id,
+            approver_id=distributor.id,  # 승인자는 소속 총판
+            shopping_slots_requested=shopping_slots,
+            place_slots_requested=place_slots,
+            shopping_slot_type=shopping_slot_type,
+            place_slot_type=place_slot_type,
+            start_date=start_date,
+            end_date=end_date,
+            request_reason=request_reason,
+            status='pending'
+        )
+        
+        db.session.add(quota_request)
+        db.session.commit()
+        
+        flash('슬롯 할당량 요청이 제출되었습니다. 총판의 승인을 기다려주세요.', 'success')
+        return redirect(url_for('agency_dashboard'))
+    
+    # 현재 슬롯 할당량 정보 가져오기
+    quota = current_user.quota
+    if not quota:
+        # 할당량 정보가 없으면 새로 생성
+        quota = SlotQuota(
+            user_id=current_user.id,
+            shopping_slots_limit=0,
+            place_slots_limit=0,
+            shopping_slots_used=0,
+            place_slots_used=0
+        )
+        db.session.add(quota)
+        db.session.commit()
+    
+    return render_template('agency/request_slot_quota.html', form=form)
 
 @app.route('/place-slots/upload', methods=['GET', 'POST'])
 @login_required
