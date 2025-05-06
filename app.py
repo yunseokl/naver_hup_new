@@ -889,29 +889,35 @@ def distributor_approve_quota(request_id):
             for i in range(quota_request.shopping_slots_requested):
                 shopping_slot = ShoppingSlot(
                     user_id=agency.id,
-                    slot_name=f'쇼핑 슬롯 #{agency.quota.shopping_slots_limit - quota_request.shopping_slots_requested + i + 1}',
+                    slot_name=f'빈 쇼핑 슬롯 #{i+1} ({quota_request.shopping_slot_type})',
                     start_date=quota_request.start_date,
                     end_date=quota_request.end_date,
                     slot_type=quota_request.shopping_slot_type,
                     slot_price=quota_request.shopping_slot_price,
-                    status='approved'
+                    status='empty'  # 빈 슬롯으로 생성
                 )
                 db.session.add(shopping_slot)
+                
+                # 사용된 슬롯 카운트 증가
+                agency.quota.shopping_slots_used += 1
             
             # 플레이스 슬롯 생성
             for i in range(quota_request.place_slots_requested):
                 place_slot = PlaceSlot(
                     user_id=agency.id,
-                    slot_name=f'플레이스 슬롯 #{agency.quota.place_slots_limit - quota_request.place_slots_requested + i + 1}',
+                    slot_name=f'빈 플레이스 슬롯 #{i+1} ({quota_request.place_slot_type})',
                     start_date=quota_request.start_date,
                     end_date=quota_request.end_date,
                     slot_type=quota_request.place_slot_type,
                     slot_price=quota_request.place_slot_price,
-                    status='approved'
+                    status='empty'  # 빈 슬롯으로 생성
                 )
                 db.session.add(place_slot)
+                
+                # 사용된 슬롯 카운트 증가
+                agency.quota.place_slots_used += 1
             
-        flash('슬롯 할당량 요청이 승인되었습니다.', 'success')
+        flash('슬롯 할당량 요청이 승인되었고, 요청된 빈 슬롯이 생성되었습니다.', 'success')
     
     elif action == 'reject':
         # 요청 거절

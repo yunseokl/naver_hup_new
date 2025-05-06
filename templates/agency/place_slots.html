@@ -35,7 +35,127 @@
                 </a>
             </div>
             
-            <!-- 슬롯 테이블 -->
+            <!-- 빈 슬롯 테이블 -->
+            {% if empty_slots %}
+            <div class="card mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">빈 플레이스 슬롯 목록</h5>
+                    <p class="small mb-0">총판으로부터 할당받은 빈 슬롯이 표시됩니다. 정보를 등록하려면 편집 버튼을 클릭하세요.</p>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>슬롯 이름</th>
+                                    <th>슬롯 유형</th>
+                                    <th>슬롯 가격</th>
+                                    <th>기간</th>
+                                    <th>상태</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for slot in empty_slots %}
+                                <tr>
+                                    <td>{{ slot.slot_name }}</td>
+                                    <td>{{ slot.slot_type }}</td>
+                                    <td>{{ slot.slot_price }}</td>
+                                    <td>{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '-' }} ~ {{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '-' }}</td>
+                                    <td>
+                                        <span class="badge bg-secondary">빈 슬롯</span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#editSlotModal{{ slot.id }}">
+                                                <i class="icon icon-edit"></i> 등록하기
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <!-- 빈 슬롯 등록 모달 -->
+                                <div class="modal fade" id="editSlotModal{{ slot.id }}" tabindex="-1" aria-labelledby="editSlotModalLabel{{ slot.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editSlotModalLabel{{ slot.id }}">빈 슬롯 정보 등록</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ url_for('edit_place_slot', slot_id=slot.id) }}" method="POST">
+                                                <div class="modal-body">
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="slot_name" class="form-label">슬롯 이름 <span class="text-danger">*</span></label>
+                                                            <input type="text" class="form-control" id="slot_name" name="slot_name" value="{{ slot.slot_name }}" required>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="place_id" class="form-label">광고주 ID</label>
+                                                            <input type="text" class="form-control" id="place_id" name="place_id" value="{{ slot.place_id }}">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="business_category" class="form-label">업종분류 코드</label>
+                                                            <input type="text" class="form-control" id="business_category" name="business_category" value="{{ slot.business_category }}">
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="business_type" class="form-label">업종분류 명</label>
+                                                            <input type="text" class="form-control" id="business_type" name="business_type" value="{{ slot.business_type }}">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="place_name" class="form-label">장소명</label>
+                                                            <input type="text" class="form-control" id="place_name" name="place_name" value="{{ slot.place_name }}">
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="address" class="form-label">주소</label>
+                                                            <input type="text" class="form-control" id="address" name="address" value="{{ slot.address }}">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <label for="operation_status" class="form-label">운영 상태</label>
+                                                            <input type="text" class="form-control" id="operation_status" name="operation_status" value="{{ slot.operation_status }}">
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            <label for="status_reason" class="form-label">상태 이유</label>
+                                                            <input type="text" class="form-control" id="status_reason" name="status_reason" value="{{ slot.status_reason }}">
+                                                        </div>
+                                                    </div>
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-4">
+                                                            <label for="start_date" class="form-label">시작일</label>
+                                                            <input type="date" class="form-control" id="start_date" name="start_date" value="{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '' }}">
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label for="end_date" class="form-label">종료일</label>
+                                                            <input type="date" class="form-control" id="end_date" name="end_date" value="{{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '' }}">
+                                                        </div>
+                                                        <div class="col-md-4">
+                                                            <label for="deadline_date" class="form-label">마감일</label>
+                                                            <input type="date" class="form-control" id="deadline_date" name="deadline_date" value="{{ slot.deadline_date.strftime('%Y-%m-%d') if slot.deadline_date else '' }}">
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                                    <button type="submit" class="btn btn-primary">등록하기</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 일반 슬롯 테이블 -->
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">플레이스 슬롯 목록</h5>
