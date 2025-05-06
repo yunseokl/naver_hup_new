@@ -1,113 +1,193 @@
 {% extends "layout.html" %}
 
-{% block title %}대행사 정산 내역{% endblock %}
+{% block title %}정산 내역 - 대행사{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row">
-        <div class="col-md-12">
-            <h2 class="mb-4">정산 내역</h2>
-            
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="card h-100">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">정산 요약</h5>
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i data-feather="dollar-sign" class="me-2"></i> 정산 내역</h2>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="text-primary mb-1">전체 정산 건수</h5>
+                            <h2 class="mb-0">{{ settlements|length }}</h2>
                         </div>
-                        <div class="card-body">
-                            <div class="row text-center">
-                                <div class="col-6">
-                                    <div class="p-3 border rounded mb-2">
-                                        <h3>{{ completed_count }}</h3>
-                                        <p class="mb-0">완료된 정산</p>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="p-3 border rounded mb-2">
-                                        <h3>{{ pending_count }}</h3>
-                                        <p class="mb-0">처리 중인 정산</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="card h-100">
-                        <div class="card-header bg-info text-white">
-                            <h5 class="mb-0">정산 안내</h5>
-                        </div>
-                        <div class="card-body">
-                            <p>정산은 다음과 같은 프로세스로 진행됩니다:</p>
-                            <ol>
-                                <li>총판 또는 관리자가 정산을 생성합니다</li>
-                                <li>슬롯 타입별로 정산액이 산출됩니다</li>
-                                <li>검토 및 승인 후 정산이 완료됩니다</li>
-                            </ol>
-                            <p class="text-muted small">정산 관련 문의사항은 담당 총판에게 연락하세요.</p>
+                        <div>
+                            <i data-feather="file-text" style="width: 48px; height: 48px;"></i>
                         </div>
                     </div>
                 </div>
             </div>
-            
-            <div class="card mb-4">
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="text-success mb-1">정산 완료</h5>
+                            <h2 class="mb-0">{{ completed_count }}</h2>
+                        </div>
+                        <div>
+                            <i data-feather="check-circle" style="width: 48px; height: 48px; color: green;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="text-warning mb-1">정산 대기</h5>
+                            <h2 class="mb-0">{{ pending_count }}</h2>
+                        </div>
+                        <div>
+                            <i data-feather="clock" style="width: 48px; height: 48px; color: orange;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">정산 내역</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>정산 유형</th>
+                            <th>기간</th>
+                            <th>총 금액</th>
+                            <th>상태</th>
+                            <th>생성일</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if settlements %}
+                            {% for settlement in settlements %}
+                            <tr>
+                                <td>{{ settlement.id }}</td>
+                                <td>
+                                    {% if settlement.settlement_type == 'shopping' %}
+                                    <span class="badge bg-info">쇼핑</span>
+                                    {% else %}
+                                    <span class="badge bg-success">플레이스</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ settlement.period_start.strftime('%Y-%m-%d') }} ~ {{ settlement.period_end.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ '{:,}'.format(settlement.total_price) }}원</td>
+                                <td>
+                                    {% if settlement.status == 'pending' %}
+                                    <span class="badge bg-warning">진행 중</span>
+                                    {% elif settlement.status == 'completed' %}
+                                    <span class="badge bg-success">완료</span>
+                                    {% elif settlement.status == 'cancelled' %}
+                                    <span class="badge bg-danger">취소됨</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ settlement.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <a href="{{ url_for('agency_settlement_detail', settlement_id=settlement.id) }}" class="btn btn-sm btn-outline-primary">상세보기</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-3">정산 내역이 없습니다.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
                 <div class="card-header">
-                    <h5 class="mb-0">정산 내역</h5>
+                    <h5 class="mb-0">쇼핑 슬롯 정산 내역</h5>
                 </div>
                 <div class="card-body">
-                    {% if settlements %}
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>유형</th>
-                                    <th>기간</th>
-                                    <th>총 금액</th>
-                                    <th>상태</th>
-                                    <th>생성일</th>
-                                    <th>관리</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for settlement in settlements %}
-                                <tr>
-                                    <td>{{ settlement.id }}</td>
-                                    <td>
-                                        {% if settlement.settlement_type == 'shopping' %}
-                                        <span class="badge bg-info">쇼핑</span>
-                                        {% else %}
-                                        <span class="badge bg-success">플레이스</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ settlement.period_start.strftime('%Y-%m-%d') }} ~ {{ settlement.period_end.strftime('%Y-%m-%d') }}</td>
-                                    <td>{{ "{:,}".format(settlement.total_price) }}원</td>
-                                    <td>
-                                        {% if settlement.status == 'pending' %}
-                                        <span class="badge bg-warning">대기중</span>
-                                        {% elif settlement.status == 'completed' %}
-                                        <span class="badge bg-success">완료</span>
-                                        {% elif settlement.status == 'cancelled' %}
-                                        <span class="badge bg-danger">취소</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ settlement.created_at.strftime('%Y-%m-%d') }}</td>
-                                    <td>
-                                        <a href="{{ url_for('agency_settlement_detail', settlement_id=settlement.id) }}" class="btn btn-sm btn-primary">상세보기</a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-secondary">
-                        정산 내역이 없습니다.
-                    </div>
-                    {% endif %}
+                    <canvas id="shoppingChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">플레이스 슬롯 정산 내역</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="placeChart"></canvas>
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 쇼핑 차트 데이터
+    const shoppingCtx = document.getElementById('shoppingChart').getContext('2d');
+    const shoppingChart = new Chart(shoppingCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+            datasets: [{
+                label: '정산 금액',
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // 플레이스 차트 데이터
+    const placeCtx = document.getElementById('placeChart').getContext('2d');
+    const placeChart = new Chart(placeCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+            datasets: [{
+                label: '정산 금액',
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+</script>
 {% endblock %}

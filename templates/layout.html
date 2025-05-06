@@ -35,6 +35,15 @@
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ url_for('users') }}">사용자 관리</a>
                                 </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="adminSlotDropdown" role="button" data-bs-toggle="dropdown">
+                                        슬롯 관리
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">쇼핑 슬롯 현황</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">플레이스 슬롯 현황</a></li>
+                                    </ul>
+                                </li>
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ url_for('admin_approvals') }}">승인 요청</a>
                                 </li>
@@ -71,23 +80,17 @@
                                     <a class="nav-link" href="{{ url_for('agency_dashboard') }}">대시보드</a>
                                 </li>
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                        쇼핑 슬롯
+                                    <a class="nav-link dropdown-toggle" href="#" id="agencySlotDropdown" role="button" data-bs-toggle="dropdown">
+                                        슬롯 관리
                                     </a>
                                     <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="{{ url_for('agency_shopping_slots') }}">슬롯 목록</a></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('create_shopping_slot') }}">슬롯 등록</a></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('upload_shopping_slots') }}">일괄 업로드</a></li>
-                                    </ul>
-                                </li>
-                                <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
-                                        플레이스 슬롯
-                                    </a>
-                                    <ul class="dropdown-menu">
-                                        <li><a class="dropdown-item" href="{{ url_for('agency_place_slots') }}">슬롯 목록</a></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('create_place_slot') }}">슬롯 등록</a></li>
-                                        <li><a class="dropdown-item" href="{{ url_for('upload_place_slots') }}">일괄 업로드</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('agency_shopping_slots') }}">쇼핑 슬롯 목록</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('create_shopping_slot') }}">쇼핑 슬롯 등록</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('upload_shopping_slots') }}">쇼핑 슬롯 일괄 업로드</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('agency_place_slots') }}">플레이스 슬롯 목록</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('create_place_slot') }}">플레이스 슬롯 등록</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('upload_place_slots') }}">플레이스 슬롯 일괄 업로드</a></li>
                                     </ul>
                                 </li>
                                 <li class="nav-item">
