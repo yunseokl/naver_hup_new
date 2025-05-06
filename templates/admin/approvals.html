@@ -42,6 +42,7 @@
                         <th>요청자</th>
                         <th>슬롯 이름</th>
                         <th>요청 종류</th>
+                        <th>기간</th>
                         <th>요청일시</th>
                         <th>관리</th>
                     </tr>
@@ -49,7 +50,7 @@
                 <tbody>
                     {% if approvals %}
                         {% for approval in approvals %}
-                        <tr class="approval-row {{ approval.slot_type }}">
+                        <tr class="approval-row {{ approval.slot_type }}" data-slot-id="{{ approval.slot.id }}">
                             <td>
                                 <div class="form-check">
                                     <input class="form-check-input approval-check" type="checkbox" value="{{ approval.id }}">
@@ -78,9 +79,32 @@
                                     {{ '등록' if approval.approval_type == 'create' else '수정' if approval.approval_type == 'update' else '삭제' }}
                                 </span>
                             </td>
+                            <td>
+                                {% if approval.slot_type == 'shopping' %}
+                                    {% if approval.slot.start_date and approval.slot.end_date %}
+                                        <div>{{ approval.slot.start_date.strftime('%Y-%m-%d') }} ~ {{ approval.slot.end_date.strftime('%Y-%m-%d') }}</div>
+                                        <small class="text-muted">{{ (approval.slot.end_date - approval.slot.start_date).days + 1 }}일</small>
+                                    {% else %}
+                                        <span class="text-muted">기간 미설정</span>
+                                    {% endif %}
+                                {% else %}
+                                    {% if approval.slot.start_date and approval.slot.end_date %}
+                                        <div>{{ approval.slot.start_date.strftime('%Y-%m-%d') }} ~ {{ approval.slot.end_date.strftime('%Y-%m-%d') }}</div>
+                                        <small class="text-muted">{{ (approval.slot.end_date - approval.slot.start_date).days + 1 }}일</small>
+                                    {% else %}
+                                        <span class="text-muted">기간 미설정</span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
                             <td>{{ approval.requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
                             <td>
                                 <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-info view-details-btn" 
+                                           data-slot-id="{{ approval.slot.id }}" 
+                                           data-slot-type="{{ approval.slot_type }}"
+                                           data-bs-toggle="tooltip" title="상세 정보 보기">
+                                        <i data-feather="eye"></i>
+                                    </button>
                                     <a href="{{ url_for('admin_approve_request', approval_id=approval.id, action='approve') }}" class="btn btn-outline-success">
                                         <i data-feather="check"></i> 승인
                                     </a>
@@ -134,6 +158,100 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
                 <button type="button" class="btn btn-primary" id="confirmBulkBtn">확인</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 슬롯 상세 정보 모달 -->
+<div class="modal fade" id="slotDetailsModal" tabindex="-1" aria-labelledby="slotDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="slotDetailsModalLabel">슬롯 상세 정보</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row" id="shoppingSlotDetails">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">슬롯 이름</label>
+                            <p id="shopping-slot-name"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">상품명</label>
+                            <p id="shopping-product-name"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">스토어명</label>
+                            <p id="shopping-store-name"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">키워드</label>
+                            <p id="shopping-keywords"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">운영 기간</label>
+                            <p id="shopping-period"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">슬롯 단가</label>
+                            <p id="shopping-price"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">슬롯 유형</label>
+                            <p id="shopping-slot-type"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">요청자</label>
+                            <p id="shopping-requester"></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row" id="placeSlotDetails">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">슬롯 이름</label>
+                            <p id="place-slot-name"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">장소명</label>
+                            <p id="place-name"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">주소</label>
+                            <p id="place-address"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">업종</label>
+                            <p id="place-business-type"></p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">운영 기간</label>
+                            <p id="place-period"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">슬롯 단가</label>
+                            <p id="place-price"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">슬롯 유형</label>
+                            <p id="place-slot-type"></p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">요청자</label>
+                            <p id="place-requester"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
             </div>
         </div>
     </div>
@@ -247,6 +365,108 @@
         
         function getSelectedCount() {
             return Array.from(approvalCheckboxes).filter(checkbox => checkbox.checked).length;
+        }
+        
+        // 슬롯 상세 정보 모달 기능
+        const slotDetailsModal = new bootstrap.Modal(document.getElementById('slotDetailsModal'));
+        const viewDetailsBtns = document.querySelectorAll('.view-details-btn');
+        
+        // 툴팁 초기화
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // 상세 정보 버튼 클릭 이벤트
+        viewDetailsBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const slotId = this.getAttribute('data-slot-id');
+                const slotType = this.getAttribute('data-slot-type');
+                
+                // AJAX로 슬롯 상세 정보 요청
+                fetchSlotDetails(slotId, slotType);
+            });
+        });
+        
+        // 슬롯 상세 정보 요청 함수
+        function fetchSlotDetails(slotId, slotType) {
+            // API 엔드포인트 URL
+            const url = `/api/${slotType}_slot/${slotId}`;
+            
+            // 실제 API가 없으므로 모의 데이터로 처리
+            const mockData = getMockSlotData(slotId, slotType);
+            
+            // 모달에 데이터 설정
+            if (slotType === 'shopping') {
+                setShoppingSlotDetails(mockData);
+                document.getElementById('shoppingSlotDetails').style.display = 'flex';
+                document.getElementById('placeSlotDetails').style.display = 'none';
+            } else if (slotType === 'place') {
+                setPlaceSlotDetails(mockData);
+                document.getElementById('shoppingSlotDetails').style.display = 'none';
+                document.getElementById('placeSlotDetails').style.display = 'flex';
+            }
+            
+            // 모달 표시
+            slotDetailsModal.show();
+        }
+        
+        // 모의 슬롯 데이터 (실제로는 API로 대체해야 함)
+        function getMockSlotData(slotId, slotType) {
+            // 테이블에서 해당 행의 데이터 추출
+            const row = document.querySelector(`.approval-row[data-slot-id="${slotId}"]`);
+            
+            if (slotType === 'shopping') {
+                return {
+                    id: slotId,
+                    slot_name: row ? row.querySelector('.slot-name').textContent : `쇼핑 슬롯 ${slotId}`,
+                    product_name: '상품명',
+                    store_name: '스토어명',
+                    keywords: '키워드1, 키워드2, 키워드3',
+                    slot_price: '1000',
+                    slot_type: '일반 슬롯',
+                    requester: row ? row.querySelector('.requester-name').textContent : '요청자',
+                    start_date: '2025-05-01',
+                    end_date: '2025-05-31'
+                };
+            } else {
+                return {
+                    id: slotId,
+                    slot_name: row ? row.querySelector('.slot-name').textContent : `플레이스 슬롯 ${slotId}`,
+                    place_name: '장소명',
+                    address: '서울시 강남구',
+                    business_type: '음식점',
+                    slot_price: '1000',
+                    slot_type: '검색 유입',
+                    requester: row ? row.querySelector('.requester-name').textContent : '요청자',
+                    start_date: '2025-05-01',
+                    end_date: '2025-05-31'
+                };
+            }
+        }
+        
+        // 쇼핑 슬롯 상세 정보 설정
+        function setShoppingSlotDetails(data) {
+            document.getElementById('shopping-slot-name').textContent = data.slot_name;
+            document.getElementById('shopping-product-name').textContent = data.product_name;
+            document.getElementById('shopping-store-name').textContent = data.store_name;
+            document.getElementById('shopping-keywords').textContent = data.keywords;
+            document.getElementById('shopping-price').textContent = `${Number(data.slot_price).toLocaleString()}원`;
+            document.getElementById('shopping-slot-type').textContent = data.slot_type;
+            document.getElementById('shopping-requester').textContent = data.requester;
+            document.getElementById('shopping-period').textContent = `${data.start_date} ~ ${data.end_date}`;
+        }
+        
+        // 플레이스 슬롯 상세 정보 설정
+        function setPlaceSlotDetails(data) {
+            document.getElementById('place-slot-name').textContent = data.slot_name;
+            document.getElementById('place-name').textContent = data.place_name;
+            document.getElementById('place-address').textContent = data.address;
+            document.getElementById('place-business-type').textContent = data.business_type;
+            document.getElementById('place-price').textContent = `${Number(data.slot_price).toLocaleString()}원`;
+            document.getElementById('place-slot-type').textContent = data.slot_type;
+            document.getElementById('place-requester').textContent = data.requester;
+            document.getElementById('place-period').textContent = `${data.start_date} ~ ${data.end_date}`;
         }
     });
 </script>
