@@ -2,7 +2,7 @@ import os
 import logging
 import uuid
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
 from werkzeug.exceptions import HTTPException
 from urllib.parse import urlparse
@@ -812,9 +812,83 @@ def admin_approve_request(approval_id, action):
             if slot.start_date and slot.end_date and slot.slot_price:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
                 days = (slot.end_date - slot.start_date).days + 1
+                total_price = days * slot.slot_price
+                total_admin_price = days * (slot.admin_price or 0)
                 
                 # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {days * slot.slot_price}원")
+                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {total_price}원")
+                
+                # 정산 자동 생성
+                today = datetime.now().date()
+                
+                # 자동 정산 생성 (이번 달 기준)
+                month_start = today.replace(day=1)
+                if today.month == 12:
+                    next_month = today.replace(year=today.year + 1, month=1, day=1)
+                else:
+                    next_month = today.replace(month=today.month + 1, day=1)
+                month_end = next_month - timedelta(days=1)
+                
+                # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
+                existing_settlement = Settlement.query.filter(
+                    Settlement.user_id == slot.user_id,
+                    Settlement.settlement_type == 'shopping',
+                    Settlement.period_start <= today,
+                    Settlement.period_end >= today,
+                    Settlement.status == 'pending'
+                ).first()
+                
+                if existing_settlement:
+                    # 기존 정산에 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=existing_settlement.id,
+                        shopping_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 정산 합계 업데이트
+                    existing_settlement.total_price += total_price
+                    existing_settlement.admin_price += total_admin_price
+                    existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
+                else:
+                    # 새 정산 생성
+                    new_settlement = Settlement(
+                        user_id=slot.user_id,
+                        admin_id=current_user.id,
+                        settlement_type='shopping',
+                        period_start=month_start,
+                        period_end=month_end,
+                        status='pending',
+                        total_price=total_price,
+                        admin_price=total_admin_price,
+                        agency_price=total_price - total_admin_price,
+                        notes=f"슬롯 승인 시 자동 생성된 정산 ({today} 생성)"
+                    )
+                    db.session.add(new_settlement)
+                    db.session.flush()  # ID 생성
+                    
+                    # 정산 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=new_settlement.id,
+                        shopping_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
             
         else:
             slot = approval.place_slot
@@ -824,9 +898,83 @@ def admin_approve_request(approval_id, action):
             if slot.start_date and slot.end_date and slot.slot_price:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
                 days = (slot.end_date - slot.start_date).days + 1
+                total_price = days * slot.slot_price
+                total_admin_price = days * (slot.admin_price or 0)
                 
                 # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {days * slot.slot_price}원")
+                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {total_price}원")
+                
+                # 정산 자동 생성
+                today = datetime.now().date()
+                
+                # 자동 정산 생성 (이번 달 기준)
+                month_start = today.replace(day=1)
+                if today.month == 12:
+                    next_month = today.replace(year=today.year + 1, month=1, day=1)
+                else:
+                    next_month = today.replace(month=today.month + 1, day=1)
+                month_end = next_month - timedelta(days=1)
+                
+                # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
+                existing_settlement = Settlement.query.filter(
+                    Settlement.user_id == slot.user_id,
+                    Settlement.settlement_type == 'place',
+                    Settlement.period_start <= today,
+                    Settlement.period_end >= today,
+                    Settlement.status == 'pending'
+                ).first()
+                
+                if existing_settlement:
+                    # 기존 정산에 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=existing_settlement.id,
+                        place_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 정산 합계 업데이트
+                    existing_settlement.total_price += total_price
+                    existing_settlement.admin_price += total_admin_price
+                    existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
+                else:
+                    # 새 정산 생성
+                    new_settlement = Settlement(
+                        user_id=slot.user_id,
+                        admin_id=current_user.id,
+                        settlement_type='place',
+                        period_start=month_start,
+                        period_end=month_end,
+                        status='pending',
+                        total_price=total_price,
+                        admin_price=total_admin_price,
+                        agency_price=total_price - total_admin_price,
+                        notes=f"슬롯 승인 시 자동 생성된 정산 ({today} 생성)"
+                    )
+                    db.session.add(new_settlement)
+                    db.session.flush()  # ID 생성
+                    
+                    # 정산 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=new_settlement.id,
+                        place_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
             
         flash('승인 요청이 수락되었습니다.', 'success')
     
@@ -1611,7 +1759,7 @@ def distributor_approve_quota(request_id):
 @app.route('/distributor/approve/<int:approval_id>/<action>')
 @distributor_required
 def distributor_approve_request(approval_id, action):
-    """총판의 승인 요청 처리"""
+    """총판의 승인 요청 처리 및 정산 자동 처리"""
     approval = SlotApproval.query.get_or_404(approval_id)
     
     # 이 승인 요청이 자신의 대행사에서 온 것인지 확인
@@ -1625,10 +1773,177 @@ def distributor_approve_request(approval_id, action):
         
         # 슬롯 상태 업데이트 ('approved'에서 'live'로 변경)
         if approval.slot_type == 'shopping':
-            approval.shopping_slot.status = 'live'
+            slot = approval.shopping_slot
+            slot.status = 'live'
+            
+            # 정산 자동 처리 - 슬롯 가격과 기간에 따른 정산 금액 계산
+            if slot.start_date and slot.end_date and slot.slot_price:
+                # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
+                days = (slot.end_date - slot.start_date).days + 1
+                total_price = days * slot.slot_price
+                total_admin_price = days * (slot.admin_price or 0)
+                
+                # 기본 정보 로깅
+                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {total_price}원")
+                
+                # 정산 자동 생성
+                today = datetime.now().date()
+                
+                # 자동 정산 생성 (이번 달 기준)
+                month_start = today.replace(day=1)
+                if today.month == 12:
+                    next_month = today.replace(year=today.year + 1, month=1, day=1)
+                else:
+                    next_month = today.replace(month=today.month + 1, day=1)
+                month_end = next_month - timedelta(days=1)
+                
+                # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
+                existing_settlement = Settlement.query.filter(
+                    Settlement.user_id == slot.user_id,
+                    Settlement.settlement_type == 'shopping',
+                    Settlement.period_start <= today,
+                    Settlement.period_end >= today,
+                    Settlement.status == 'pending'
+                ).first()
+                
+                if existing_settlement:
+                    # 기존 정산에 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=existing_settlement.id,
+                        shopping_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 정산 합계 업데이트
+                    existing_settlement.total_price += total_price
+                    existing_settlement.admin_price += total_admin_price
+                    existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
+                else:
+                    # 새 정산 생성
+                    new_settlement = Settlement(
+                        user_id=slot.user_id,
+                        admin_id=None,  # 총판 승인일 경우 admin_id는 None
+                        settlement_type='shopping',
+                        period_start=month_start,
+                        period_end=month_end,
+                        status='pending',
+                        total_price=total_price,
+                        admin_price=total_admin_price,
+                        agency_price=total_price - total_admin_price,
+                        notes=f"슬롯 승인 시 자동 생성된 정산 ({today} 생성)"
+                    )
+                    db.session.add(new_settlement)
+                    db.session.flush()  # ID 생성
+                    
+                    # 정산 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=new_settlement.id,
+                        shopping_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
+            
         else:
-            approval.place_slot.status = 'live'
-        
+            slot = approval.place_slot
+            slot.status = 'live'
+            
+            # 정산 자동 처리 - 슬롯 가격과 기간에 따른 정산 금액 계산
+            if slot.start_date and slot.end_date and slot.slot_price:
+                # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
+                days = (slot.end_date - slot.start_date).days + 1
+                total_price = days * slot.slot_price
+                total_admin_price = days * (slot.admin_price or 0)
+                
+                # 기본 정보 로깅
+                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {total_price}원")
+                
+                # 정산 자동 생성
+                today = datetime.now().date()
+                
+                # 자동 정산 생성 (이번 달 기준)
+                month_start = today.replace(day=1)
+                if today.month == 12:
+                    next_month = today.replace(year=today.year + 1, month=1, day=1)
+                else:
+                    next_month = today.replace(month=today.month + 1, day=1)
+                month_end = next_month - timedelta(days=1)
+                
+                # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
+                existing_settlement = Settlement.query.filter(
+                    Settlement.user_id == slot.user_id,
+                    Settlement.settlement_type == 'place',
+                    Settlement.period_start <= today,
+                    Settlement.period_end >= today,
+                    Settlement.status == 'pending'
+                ).first()
+                
+                if existing_settlement:
+                    # 기존 정산에 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=existing_settlement.id,
+                        place_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 정산 합계 업데이트
+                    existing_settlement.total_price += total_price
+                    existing_settlement.admin_price += total_admin_price
+                    existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
+                else:
+                    # 새 정산 생성
+                    new_settlement = Settlement(
+                        user_id=slot.user_id,
+                        admin_id=None,  # 총판 승인일 경우 admin_id는 None
+                        settlement_type='place',
+                        period_start=month_start,
+                        period_end=month_end,
+                        status='pending',
+                        total_price=total_price,
+                        admin_price=total_admin_price,
+                        agency_price=total_price - total_admin_price,
+                        notes=f"슬롯 승인 시 자동 생성된 정산 ({today} 생성)"
+                    )
+                    db.session.add(new_settlement)
+                    db.session.flush()  # ID 생성
+                    
+                    # 정산 항목 추가
+                    settlement_item = SettlementItem(
+                        settlement_id=new_settlement.id,
+                        place_slot_id=slot.id,
+                        slot_price=slot.slot_price,
+                        admin_price=slot.admin_price,
+                        settlement_price=total_price
+                    )
+                    db.session.add(settlement_item)
+                    
+                    # 슬롯 정산 상태 업데이트
+                    slot.settlement_status = 'in_progress'
+                    
+                    app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
+            
         flash('승인 요청이 수락되었습니다.', 'success')
     
     elif action == 'reject':
