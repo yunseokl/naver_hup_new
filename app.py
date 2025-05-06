@@ -523,7 +523,9 @@ def create_distributor_slot():
     try:
         # 할당된 슬롯 수 만큼 빈 슬롯 생성
         created_slots = 0
+        
         for i in range(slot_quantity):
+            # 슬롯 이름 설정
             slot_name = f"{agency.company_name} {slot_type.capitalize()} 슬롯 {datetime.now().strftime('%Y%m%d')}-{i+1}"
             
             if slot_type == 'shopping':
@@ -535,7 +537,7 @@ def create_distributor_slot():
                     end_date=end_date,
                     status='empty',  # 빈 슬롯으로 생성
                     slot_price=slot_price,
-                    slot_type=slot_sub_type,  # standard 또는 premium
+                    slot_type=slot_sub_type or 'standard',  # standard 또는 premium
                     notes=notes
                 )
             else:
@@ -547,15 +549,17 @@ def create_distributor_slot():
                     end_date=end_date,
                     status='empty',  # 빈 슬롯으로 생성
                     slot_price=slot_price,
-                    slot_type=slot_sub_type,  # search 또는 save
+                    slot_type=slot_sub_type or 'search',  # search 또는 save
                     notes=notes
                 )
+            
+            db.session.add(slot)
+            created_slots += 1
         
-        # 슬롯과 슬롯 정산 정보 저장
-        db.session.add(slot)
+        # 슬롯 저장
         db.session.commit()
         
-        flash(f'{slot_type} 슬롯이 성공적으로 생성되었습니다.', 'success')
+        flash(f'{created_slots}개의 {slot_type} 슬롯이 성공적으로 생성되었습니다.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'슬롯 생성 중 오류가 발생했습니다: {str(e)}', 'danger')
