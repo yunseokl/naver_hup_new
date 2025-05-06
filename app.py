@@ -2250,7 +2250,7 @@ def create_settlement():
             slots = ShoppingSlot.query.filter(
                 ShoppingSlot.user_id == user_id,
                 ShoppingSlot.settlement_status == 'pending',
-                ShoppingSlot.status == 'approved',
+                ShoppingSlot.status == 'live',  # 라이브 상태인 슬롯만 정산
                 ShoppingSlot.start_date >= period_start,
                 ShoppingSlot.end_date <= period_end
             ).all()
@@ -2259,12 +2259,34 @@ def create_settlement():
             admin_price = 0
             
             for slot in slots:
+                # 라이브 기간에 따른 정산 금액 계산
+                today = datetime.now().date()
+                start_date = slot.start_date or today
+                end_date = slot.end_date or today
+                
+                # 라이브 시작일은 start_date와 period_start 중 더 늦은 날짜
+                effective_start = max(start_date, period_start)
+                # 라이브 종료일은 end_date와 period_end 중 더 이른 날짜, 오늘보다 늦을 수 없음
+                effective_end = min(end_date, period_end, today)
+                
+                # 라이브 일수 계산 (양 끝 날짜 포함)
+                live_days = (effective_end - effective_start).days + 1
+                total_days = (end_date - start_date).days + 1
+                
+                # 일별 슬롯 단가 계산
+                daily_price = (slot.slot_price or 0) / total_days if total_days > 0 else 0
+                daily_admin_price = (slot.admin_price or 0) / total_days if total_days > 0 else 0
+                
+                # 라이브 기간에 따른 정산 금액 계산
+                slot_settlement_price = int(daily_price * live_days)
+                slot_admin_settlement_price = int(daily_admin_price * live_days)
+                
                 settlement_item = SettlementItem(
                     settlement_id=settlement.id,
                     shopping_slot_id=slot.id,
                     slot_price=slot.slot_price or 0,
                     admin_price=slot.admin_price or 0,
-                    settlement_price=slot.slot_price or 0
+                    settlement_price=slot_settlement_price
                 )
                 db.session.add(settlement_item)
                 
@@ -2272,8 +2294,8 @@ def create_settlement():
                 slot.settlement_status = 'in_progress'
                 
                 # 합계 계산
-                total_price += slot.slot_price or 0
-                admin_price += slot.admin_price or 0
+                total_price += slot_settlement_price
+                admin_price += slot_admin_settlement_price
                 
             settlement.total_price = total_price
             settlement.admin_price = admin_price
@@ -2283,7 +2305,7 @@ def create_settlement():
             slots = PlaceSlot.query.filter(
                 PlaceSlot.user_id == user_id,
                 PlaceSlot.settlement_status == 'pending',
-                PlaceSlot.status == 'approved',
+                PlaceSlot.status == 'live',  # 라이브 상태인 슬롯만 정산
                 PlaceSlot.start_date >= period_start,
                 PlaceSlot.end_date <= period_end
             ).all()
@@ -2292,12 +2314,34 @@ def create_settlement():
             admin_price = 0
             
             for slot in slots:
+                # 라이브 기간에 따른 정산 금액 계산
+                today = datetime.now().date()
+                start_date = slot.start_date or today
+                end_date = slot.end_date or today
+                
+                # 라이브 시작일은 start_date와 period_start 중 더 늦은 날짜
+                effective_start = max(start_date, period_start)
+                # 라이브 종료일은 end_date와 period_end 중 더 이른 날짜, 오늘보다 늦을 수 없음
+                effective_end = min(end_date, period_end, today)
+                
+                # 라이브 일수 계산 (양 끝 날짜 포함)
+                live_days = (effective_end - effective_start).days + 1
+                total_days = (end_date - start_date).days + 1
+                
+                # 일별 슬롯 단가 계산
+                daily_price = (slot.slot_price or 0) / total_days if total_days > 0 else 0
+                daily_admin_price = (slot.admin_price or 0) / total_days if total_days > 0 else 0
+                
+                # 라이브 기간에 따른 정산 금액 계산
+                slot_settlement_price = int(daily_price * live_days)
+                slot_admin_settlement_price = int(daily_admin_price * live_days)
+                
                 settlement_item = SettlementItem(
                     settlement_id=settlement.id,
                     place_slot_id=slot.id,
                     slot_price=slot.slot_price or 0,
                     admin_price=slot.admin_price or 0,
-                    settlement_price=slot.slot_price or 0
+                    settlement_price=slot_settlement_price
                 )
                 db.session.add(settlement_item)
                 
@@ -2305,8 +2349,8 @@ def create_settlement():
                 slot.settlement_status = 'in_progress'
                 
                 # 합계 계산
-                total_price += slot.slot_price or 0
-                admin_price += slot.admin_price or 0
+                total_price += slot_settlement_price
+                admin_price += slot_admin_settlement_price
                 
             settlement.total_price = total_price
             settlement.admin_price = admin_price
