@@ -31,6 +31,34 @@
     .nav-tabs .nav-link {
         color: #adb5bd;
     }
+    .editable-field {
+        cursor: pointer;
+        position: relative;
+    }
+    .editable-field:hover .editable-text {
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        padding: 2px 4px;
+    }
+    .edit-input {
+        width: 100%;
+    }
+    .editing .editable-text {
+        display: none;
+    }
+    .editing .edit-input {
+        display: block !important;
+    }
+    .slot-row.editing {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+    /* 아이콘 스타일 */
+    .save-slot-btn {
+        color: #28a745;
+    }
+    .edit-slot-btn {
+        color: #007bff;
+    }
 </style>
 {% endblock %}
 
@@ -116,6 +144,22 @@
             </div>
         </div>
         
+        <!-- 액션 버튼 -->
+        <div class="mb-3 d-flex gap-2">
+            <button id="bulkEditBtn" class="btn btn-primary" {% if not slots %}disabled{% endif %}>
+                <i data-feather="edit-3" class="me-1" style="width: 18px; height: 18px;"></i> 전체 수정
+            </button>
+            <button id="bulkSaveBtn" class="btn btn-success d-none" {% if not slots %}disabled{% endif %}>
+                <i data-feather="save" class="me-1" style="width: 18px; height: 18px;"></i> 일괄 저장
+            </button>
+            <button id="cancelEditBtn" class="btn btn-secondary d-none">
+                <i data-feather="x" class="me-1" style="width: 18px; height: 18px;"></i> 취소
+            </button>
+            <button id="bulkDeleteBtn" class="btn btn-danger" {% if not slots %}disabled{% endif %}>
+                <i data-feather="trash-2" class="me-1" style="width: 18px; height: 18px;"></i> 전체 삭제
+            </button>
+        </div>
+        
         <div class="table-responsive">
             <table class="table table-bordered table-hover mb-0">
                 <thead>
@@ -138,18 +182,57 @@
                 <tbody>
                     {% if slots %}
                         {% for slot in slots %}
-                        <tr>
+                        <tr data-slot-id="{{ slot.id }}" class="slot-row {% if slot.status == 'empty' %}table-secondary{% endif %}">
                             <td>
                                 <input type="checkbox" class="slot-checkbox" value="{{ slot.id }}">
                             </td>
                             <td>{{ loop.index }}</td>
                             <td>{{ slot.user.company_name }}</td>
-                            <td>{{ (slot.keywords.split(',')[0] if slot.keywords else '') or 'None' }}</td>
-                            <td>{{ slot.product_id or 'None' }}</td>
-                            <td>{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '-' }}</td>
-                            <td>{{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '-' }}</td>
-                            <td>{{ slot.slot_type or '일반' }}</td>
-                            <td>{{ slot.slot_price|default(0) }}원</td>
+                            <td>
+                                <div class="editable-field">
+                                    <span class="editable-text">{{ (slot.keywords.split(',')[0] if slot.keywords else '') or 'None' }}</span>
+                                    <input type="text" class="form-control form-control-sm edit-input d-none"
+                                           name="keywords" value="{{ slot.keywords or '' }}" data-slot-id="{{ slot.id }}">
+                                </div>
+                            </td>
+                            <td>
+                                <div class="editable-field">
+                                    <span class="editable-text">{{ slot.product_id or 'None' }}</span>
+                                    <input type="text" class="form-control form-control-sm edit-input d-none"
+                                           name="product_id" value="{{ slot.product_id or '' }}" data-slot-id="{{ slot.id }}">
+                                </div>
+                            </td>
+                            <td>
+                                <div class="editable-field">
+                                    <span class="editable-text">{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '-' }}</span>
+                                    <input type="date" class="form-control form-control-sm edit-input d-none"
+                                           name="start_date" value="{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '' }}" data-slot-id="{{ slot.id }}">
+                                </div>
+                            </td>
+                            <td>
+                                <div class="editable-field">
+                                    <span class="editable-text">{{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '-' }}</span>
+                                    <input type="date" class="form-control form-control-sm edit-input d-none"
+                                           name="end_date" value="{{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '' }}" data-slot-id="{{ slot.id }}">
+                                </div>
+                            </td>
+                            <td>
+                                <div class="editable-field">
+                                    <span class="editable-text">{{ slot.slot_type or '일반' }}</span>
+                                    <select class="form-select form-select-sm edit-input d-none"
+                                            name="slot_type" data-slot-id="{{ slot.id }}">
+                                        <option value="standard" {% if slot.slot_type == 'standard' %}selected{% endif %}>일반</option>
+                                        <option value="premium" {% if slot.slot_type == 'premium' %}selected{% endif %}>프리미엄</option>
+                                    </select>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="editable-field">
+                                    <span class="editable-text">{{ slot.slot_price|default(0) }}원</span>
+                                    <input type="number" class="form-control form-control-sm edit-input d-none"
+                                           name="slot_price" value="{{ slot.slot_price|default(0) }}" data-slot-id="{{ slot.id }}" min="0" max="1000">
+                                </div>
+                            </td>
                             <td>
                                 {% if slot.status == 'pending' %}
                                     <span class="badge bg-warning text-dark">승인대기</span>
@@ -157,6 +240,8 @@
                                     <span class="badge bg-success">승인됨</span>
                                 {% elif slot.status == 'live' %}
                                     <span class="badge bg-primary">라이브</span>
+                                {% elif slot.status == 'empty' %}
+                                    <span class="badge bg-secondary">빈 슬롯</span>
                                 {% else %}
                                     <span class="badge bg-danger">거절됨</span>
                                 {% endif %}
@@ -164,11 +249,17 @@
                             <td>
                                 <div class="d-flex justify-content-center gap-2">
                                     <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault{{ slot.id }}" 
-                                            {% if slot.status == 'live' %}checked{% endif %}>
+                                        <input class="form-check-input status-toggle" type="checkbox" role="switch" 
+                                               id="statusToggle{{ slot.id }}" data-slot-id="{{ slot.id }}"
+                                               {% if slot.status == 'live' %}checked{% endif %}>
                                     </div>
-                                    <button class="btn btn-sm btn-outline-primary edit-slot-btn" data-bs-toggle="modal" data-bs-target="#editModal{{ slot.id }}">
+                                    <button class="btn btn-sm btn-outline-primary edit-slot-btn" 
+                                            data-slot-id="{{ slot.id }}">
                                         <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success save-slot-btn d-none" 
+                                            data-slot-id="{{ slot.id }}">
+                                        <i data-feather="save" style="width: 16px; height: 16px;"></i>
                                     </button>
                                 </div>
                             </td>
@@ -518,6 +609,9 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Feather 아이콘 초기화
+        feather.replace();
+        
         // 전체 선택 기능
         const selectAllCheckbox = document.getElementById('selectAll');
         if (selectAllCheckbox) {
@@ -547,7 +641,318 @@
                 document.getElementById('slot_price').value = 1000;
             });
         }
+        
+        // 전체 슬롯 수정 모드 활성화
+        const bulkEditBtn = document.getElementById('bulkEditBtn');
+        const bulkSaveBtn = document.getElementById('bulkSaveBtn');
+        const cancelEditBtn = document.getElementById('cancelEditBtn');
+        
+        if (bulkEditBtn && bulkSaveBtn && cancelEditBtn) {
+            bulkEditBtn.addEventListener('click', function() {
+                // 모든 슬롯을 편집 모드로 변경
+                document.querySelectorAll('.slot-row').forEach(row => {
+                    row.classList.add('editing');
+                });
+                
+                // 버튼 표시 전환
+                bulkEditBtn.classList.add('d-none');
+                bulkSaveBtn.classList.remove('d-none');
+                cancelEditBtn.classList.remove('d-none');
+                
+                // 개별 편집 버튼 숨기고 저장 버튼 표시
+                document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+                    btn.classList.add('d-none');
+                });
+                document.querySelectorAll('.save-slot-btn').forEach(btn => {
+                    btn.classList.remove('d-none');
+                });
+            });
+            
+            // 편집 취소
+            cancelEditBtn.addEventListener('click', function() {
+                // 편집 모드 해제
+                document.querySelectorAll('.slot-row').forEach(row => {
+                    row.classList.remove('editing');
+                });
+                
+                // 버튼 표시 전환
+                bulkEditBtn.classList.remove('d-none');
+                bulkSaveBtn.classList.add('d-none');
+                cancelEditBtn.classList.add('d-none');
+                
+                // 입력 필드 원래 값으로 되돌리기
+                document.querySelectorAll('.edit-input').forEach(input => {
+                    const originalValue = input.getAttribute('data-original-value') || '';
+                    input.value = originalValue;
+                });
+                
+                // 개별 편집 버튼 표시하고 저장 버튼 숨기기
+                document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+                    btn.classList.remove('d-none');
+                });
+                document.querySelectorAll('.save-slot-btn').forEach(btn => {
+                    btn.classList.add('d-none');
+                });
+            });
+            
+            // 일괄 저장 처리
+            bulkSaveBtn.addEventListener('click', function() {
+                // 체크된 슬롯만 수집
+                const checkedSlots = [];
+                document.querySelectorAll('.slot-checkbox:checked').forEach(checkbox => {
+                    const slotId = checkbox.value;
+                    const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
+                    if (row) {
+                        const slotData = {
+                            id: slotId,
+                            fields: {}
+                        };
+                        
+                        // 해당 슬롯의 모든 입력 필드 수집
+                        row.querySelectorAll('.edit-input').forEach(input => {
+                            slotData.fields[input.name] = input.value;
+                        });
+                        
+                        checkedSlots.push(slotData);
+                    }
+                });
+                
+                // 일괄 저장 API 호출
+                if (checkedSlots.length > 0) {
+                    saveSlotsBulk(checkedSlots);
+                } else {
+                    alert('저장할 슬롯을 선택해주세요.');
+                }
+            });
+        }
+        
+        // 개별 슬롯 편집 버튼 클릭 처리
+        document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const slotId = this.getAttribute('data-slot-id');
+                const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
+                
+                // 편집 모드 활성화
+                row.classList.add('editing');
+                
+                // 버튼 전환
+                this.classList.add('d-none');
+                row.querySelector('.save-slot-btn').classList.remove('d-none');
+                
+                // 현재 값을 원본 값으로 저장
+                row.querySelectorAll('.edit-input').forEach(input => {
+                    input.setAttribute('data-original-value', input.value);
+                });
+            });
+        });
+        
+        // 개별 저장 버튼 클릭 처리
+        document.querySelectorAll('.save-slot-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const slotId = this.getAttribute('data-slot-id');
+                const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
+                
+                // 슬롯 데이터 수집
+                const slotData = {
+                    id: slotId,
+                    fields: {}
+                };
+                
+                // 입력 필드 값 수집
+                row.querySelectorAll('.edit-input').forEach(input => {
+                    slotData.fields[input.name] = input.value;
+                });
+                
+                // 저장 호출
+                saveSlot(slotData);
+            });
+        });
+        
+        // 슬롯 필드 클릭 시 인라인 편집 활성화
+        document.querySelectorAll('.editable-field').forEach(field => {
+            field.addEventListener('click', function() {
+                const row = this.closest('.slot-row');
+                if (!row.classList.contains('editing')) {
+                    const editBtn = row.querySelector('.edit-slot-btn');
+                    if (editBtn) editBtn.click();
+                }
+            });
+        });
+        
+        // 토글 스위치 처리
+        document.querySelectorAll('.status-toggle').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const slotId = this.getAttribute('data-slot-id');
+                const isActive = this.checked;
+                
+                // API 호출로 상태 토글
+                toggleSlotStatus(slotId, isActive);
+            });
+        });
     });
+
+    // 슬롯 개별 저장 함수
+    function saveSlot(slotData) {
+        fetch('/api/save-slot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(slotData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 성공 처리
+                const row = document.querySelector(`.slot-row[data-slot-id="${slotData.id}"]`);
+                row.classList.remove('editing');
+                
+                // 버튼 표시 갱신
+                row.querySelector('.save-slot-btn').classList.add('d-none');
+                row.querySelector('.edit-slot-btn').classList.remove('d-none');
+                
+                // 텍스트 필드 갱신
+                for (const [field, value] of Object.entries(slotData.fields)) {
+                    const editable = row.querySelector(`.editable-field [name="${field}"]`);
+                    if (editable) {
+                        const textElement = editable.closest('.editable-field').querySelector('.editable-text');
+                        if (textElement) {
+                            if (field === 'slot_price') {
+                                textElement.textContent = `${value}원`;
+                            } else if (field === 'start_date' || field === 'end_date') {
+                                textElement.textContent = value || '-';
+                            } else if (field === 'slot_type') {
+                                textElement.textContent = value === 'premium' ? '프리미엄' : '일반';
+                            } else if (field === 'keywords') {
+                                // 키워드는 첫 번째 키워드만 표시
+                                const keywords = value.split(',');
+                                textElement.textContent = keywords[0] || 'None';
+                            } else {
+                                textElement.textContent = value || 'None';
+                            }
+                        }
+                    }
+                }
+                
+                alert('슬롯이 성공적으로 저장되었습니다.');
+            } else {
+                alert('저장 실패: ' + (data.message || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('저장 오류:', error);
+            alert('슬롯 저장 중 오류가 발생했습니다.');
+        });
+    }
+    
+    // 슬롯 일괄 저장 함수
+    function saveSlotsBulk(slotsData) {
+        fetch('/api/save-slots-bulk', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ slots: slotsData })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 편집 모드 해제
+                document.querySelectorAll('.slot-row').forEach(row => {
+                    row.classList.remove('editing');
+                });
+                
+                // 버튼 상태 원복
+                document.getElementById('bulkEditBtn').classList.remove('d-none');
+                document.getElementById('bulkSaveBtn').classList.add('d-none');
+                document.getElementById('cancelEditBtn').classList.add('d-none');
+                
+                // 개별 버튼 원복
+                document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+                    btn.classList.remove('d-none');
+                });
+                document.querySelectorAll('.save-slot-btn').forEach(btn => {
+                    btn.classList.add('d-none');
+                });
+                
+                // 각 슬롯 값 업데이트
+                slotsData.forEach(slotData => {
+                    const row = document.querySelector(`.slot-row[data-slot-id="${slotData.id}"]`);
+                    if (row) {
+                        for (const [field, value] of Object.entries(slotData.fields)) {
+                            const editable = row.querySelector(`.editable-field [name="${field}"]`);
+                            if (editable) {
+                                const textElement = editable.closest('.editable-field').querySelector('.editable-text');
+                                if (textElement) {
+                                    if (field === 'slot_price') {
+                                        textElement.textContent = `${value}원`;
+                                    } else if (field === 'start_date' || field === 'end_date') {
+                                        textElement.textContent = value || '-';
+                                    } else if (field === 'slot_type') {
+                                        textElement.textContent = value === 'premium' ? '프리미엄' : '일반';
+                                    } else if (field === 'keywords') {
+                                        // 키워드는 첫 번째 키워드만 표시
+                                        const keywords = value.split(',');
+                                        textElement.textContent = keywords[0] || 'None';
+                                    } else {
+                                        textElement.textContent = value || 'None';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                
+                alert(`${slotsData.length}개의 슬롯이 성공적으로 저장되었습니다.`);
+            } else {
+                alert('일괄 저장 실패: ' + (data.message || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('저장 오류:', error);
+            alert('슬롯 일괄 저장 중 오류가 발생했습니다.');
+        });
+    }
+    
+    // 슬롯 상태 토글 함수
+    function toggleSlotStatus(slotId, isActive) {
+        fetch('/api/toggle-slot', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ slot_id: slotId, is_active: isActive })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 상태 배지 업데이트
+                const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
+                const statusBadge = row.querySelector('td:nth-child(10) .badge');
+                if (statusBadge) {
+                    if (isActive) {
+                        statusBadge.className = 'badge bg-primary';
+                        statusBadge.textContent = '라이브';
+                    } else {
+                        statusBadge.className = 'badge bg-success';
+                        statusBadge.textContent = '승인됨';
+                    }
+                }
+            } else {
+                // 토글 실패 시 UI 원복
+                const toggle = document.getElementById(`statusToggle${slotId}`);
+                if (toggle) toggle.checked = !isActive;
+                alert('상태 변경 실패: ' + (data.message || '알 수 없는 오류'));
+            }
+        })
+        .catch(error => {
+            console.error('토글 오류:', error);
+            // 토글 UI 원복
+            const toggle = document.getElementById(`statusToggle${slotId}`);
+            if (toggle) toggle.checked = !isActive;
+            alert('슬롯 상태 변경 중 오류가 발생했습니다.');
+        });
+    }
 
     // 필터 적용 함수
     function applyFilters() {

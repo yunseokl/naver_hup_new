@@ -2625,6 +2625,215 @@ def internal_server_error(e):
     logger.error(f"Server error: {e}")
     return render_template('errors/500.html'), 500
 
+# 슬롯 인라인 편집 및 일괄 저장 API 엔드포인트
+@app.route('/api/save-slot', methods=['POST'])
+@login_required
+def save_slot_api():
+    """슬롯 단일 저장 API"""
+    try:
+        data = request.json
+        slot_id = data.get('id')
+        fields = data.get('fields', {})
+        
+        # 쇼핑 슬롯 가져오기
+        shopping_slot = ShoppingSlot.query.get_or_404(slot_id)
+        
+        # 슬롯 소유권 확인
+        if shopping_slot.user_id != current_user.id and not current_user.is_admin():
+            return jsonify({
+                'success': False,
+                'message': '권한이 없습니다.'
+            }), 403
+        
+        # 각 필드 업데이트
+        for field, value in fields.items():
+            if hasattr(shopping_slot, field):
+                # 날짜 필드 처리
+                if field in ['start_date', 'end_date'] and value:
+                    setattr(shopping_slot, field, datetime.strptime(value, '%Y-%m-%d').date())
+                # 숫자 필드 처리
+                elif field == 'slot_price':
+                    # 슬롯 가격은 0-1000원 범위로 제한
+                    price = int(value) if value else 0
+                    setattr(shopping_slot, field, min(max(price, 0), 1000))
+                # 기타 일반 필드
+                else:
+                    setattr(shopping_slot, field, value)
+        
+        # 승인 상태 처리
+        # 총판이 자신의 슬롯을 수정하는 경우에는 바로 approved로 변경
+        if current_user.is_distributor() and shopping_slot.user_id == current_user.id:
+            shopping_slot.status = 'approved'
+        elif shopping_slot.status == 'empty':
+            shopping_slot.status = 'pending'  # 빈 슬롯 -> 승인 대기
+            
+            # 승인 요청 생성
+            approval = SlotApproval(
+                requester_id=current_user.id,
+                shopping_slot_id=shopping_slot.id,
+                approval_type='create'
+            )
+            
+            db.session.add(approval)
+        elif shopping_slot.status == 'approved' and current_user.is_agency():
+            shopping_slot.status = 'pending'  # 승인됨 -> 변경사항 대기
+            
+            # 승인 요청 생성
+            approval = SlotApproval(
+                requester_id=current_user.id,
+                shopping_slot_id=shopping_slot.id,
+                approval_type='update'
+            )
+            
+            db.session.add(approval)
+        
+        # 데이터베이스에 변경사항 저장
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '슬롯이 성공적으로 저장되었습니다.'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error saving slot: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route('/api/save-slots-bulk', methods=['POST'])
+@login_required
+def save_slots_bulk_api():
+    """슬롯 일괄 저장 API"""
+    try:
+        data = request.json
+        slots_data = data.get('slots', [])
+        
+        success_count = 0
+        error_messages = []
+        
+        for slot_data in slots_data:
+            try:
+                slot_id = slot_data.get('id')
+                fields = slot_data.get('fields', {})
+                
+                # 쇼핑 슬롯 가져오기
+                shopping_slot = ShoppingSlot.query.get(slot_id)
+                if not shopping_slot:
+                    error_messages.append(f"슬롯 ID {slot_id}을 찾을 수 없습니다.")
+                    continue
+                
+                # 슬롯 소유권 확인
+                if shopping_slot.user_id != current_user.id and not current_user.is_admin():
+                    error_messages.append(f"슬롯 ID {slot_id}에 대한 권한이 없습니다.")
+                    continue
+                
+                # 각 필드 업데이트
+                for field, value in fields.items():
+                    if hasattr(shopping_slot, field):
+                        # 날짜 필드 처리
+                        if field in ['start_date', 'end_date'] and value:
+                            setattr(shopping_slot, field, datetime.strptime(value, '%Y-%m-%d').date())
+                        # 숫자 필드 처리
+                        elif field == 'slot_price':
+                            # 슬롯 가격은 0-1000원 범위로 제한
+                            price = int(value) if value else 0
+                            setattr(shopping_slot, field, min(max(price, 0), 1000))
+                        # 기타 일반 필드
+                        else:
+                            setattr(shopping_slot, field, value)
+                
+                # 승인 상태 처리
+                # 총판이 자신의 슬롯을 수정하는 경우에는 바로 approved로 변경
+                if current_user.is_distributor() and shopping_slot.user_id == current_user.id:
+                    shopping_slot.status = 'approved'
+                elif shopping_slot.status == 'empty':
+                    shopping_slot.status = 'pending'  # 빈 슬롯 -> 승인 대기
+                    
+                    # 승인 요청 생성
+                    approval = SlotApproval(
+                        requester_id=current_user.id,
+                        shopping_slot_id=shopping_slot.id,
+                        approval_type='create'
+                    )
+                    
+                    db.session.add(approval)
+                elif shopping_slot.status == 'approved' and current_user.is_agency():
+                    shopping_slot.status = 'pending'  # 승인됨 -> 변경사항 대기
+                    
+                    # 승인 요청 생성
+                    approval = SlotApproval(
+                        requester_id=current_user.id,
+                        shopping_slot_id=shopping_slot.id,
+                        approval_type='update'
+                    )
+                    
+                    db.session.add(approval)
+                
+                success_count += 1
+            except Exception as e:
+                error_messages.append(f"슬롯 ID {slot_id} 처리 중 오류: {str(e)}")
+                logger.error(f"Error processing slot {slot_id}: {e}")
+        
+        # 데이터베이스에 변경사항 저장
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'{success_count}개의 슬롯이 성공적으로 저장되었습니다.',
+            'errors': error_messages if error_messages else None
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error bulk saving slots: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
+@app.route('/api/toggle-slot', methods=['POST'])
+@login_required
+def toggle_slot_api():
+    """슬롯 활성화/비활성화 토글 API"""
+    try:
+        data = request.json
+        slot_id = data.get('slot_id')
+        is_active = data.get('is_active', False)
+        
+        # 쇼핑 슬롯 가져오기
+        shopping_slot = ShoppingSlot.query.get_or_404(slot_id)
+        
+        # 슬롯 소유권 확인
+        if shopping_slot.user_id != current_user.id and not current_user.is_admin():
+            return jsonify({
+                'success': False,
+                'message': '권한이 없습니다.'
+            }), 403
+        
+        # 슬롯 상태가 approved인 경우에만 토글 가능
+        if shopping_slot.status not in ['approved', 'live']:
+            return jsonify({
+                'success': False,
+                'message': '승인된 슬롯만 활성화/비활성화할 수 있습니다.'
+            }), 400
+        
+        # 상태 토글
+        shopping_slot.status = 'live' if is_active else 'approved'
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': '슬롯 상태가 변경되었습니다.'
+        })
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error toggling slot: {e}")
+        return jsonify({
+            'success': False,
+            'message': str(e)
+        }), 500
+
 # 홈페이지 라우트는 위에 이미 정의되어 있음
 
 @app.route('/shopping', methods=['GET', 'POST'])
