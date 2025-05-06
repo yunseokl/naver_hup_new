@@ -294,13 +294,17 @@ def admin_dashboard():
     shopping_slots = ShoppingSlot.query.count()
     place_slots = PlaceSlot.query.count()
     
+    # 정산 통계
+    pending_settlements = Settlement.query.filter_by(status='pending').count()
+    
     return render_template('admin/dashboard.html',
                           users_count=users_count,
                           distributors_count=distributors_count,
                           agencies_count=agencies_count,
                           pending_approvals=pending_approvals,
                           shopping_slots=shopping_slots,
-                          place_slots=place_slots)
+                          place_slots=place_slots,
+                          pending_settlements=pending_settlements)
 
 @app.route('/admin/users')
 @admin_required
