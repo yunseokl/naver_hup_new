@@ -1046,6 +1046,34 @@ def create_distributor_slot():
     
     return redirect(url_for('distributor_slots', type=slot_type))
 
+@app.route('/distributor/slots/delete/<int:slot_id>')
+@distributor_required
+def delete_distributor_slot(slot_id):
+    """총판이 슬롯을 삭제"""
+    slot_type = request.args.get('type', 'shopping')
+    
+    try:
+        if slot_type == 'shopping':
+            # 쇼핑 슬롯 삭제
+            slot = ShoppingSlot.query.get_or_404(slot_id)
+        else:
+            # 플레이스 슬롯 삭제
+            slot = PlaceSlot.query.get_or_404(slot_id)
+        
+        # 슬롯이 본인 소유이거나 자신의 대행사의 슬롯인지 확인
+        if slot.user_id == current_user.id or slot.user.parent_id == current_user.id:
+            db.session.delete(slot)
+            db.session.commit()
+            flash('슬롯이 성공적으로 삭제되었습니다.', 'success')
+        else:
+            flash('이 슬롯을 삭제할 권한이 없습니다.', 'danger')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'슬롯 삭제 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    return redirect(url_for('distributor_slots', type=slot_type))
+
 @app.route('/distributor/slots/upload', methods=['POST'])
 @distributor_required
 def upload_distributor_slots():
