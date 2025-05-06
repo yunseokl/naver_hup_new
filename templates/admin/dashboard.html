@@ -62,7 +62,7 @@
 </div>
 
 <div class="row mb-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-warning text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -78,7 +78,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-secondary text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -92,7 +92,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card bg-dark text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
@@ -103,6 +103,22 @@
                     <i data-feather="map-pin" style="width: 48px; height: 48px;"></i>
                 </div>
                 <span class="text-white">전체 등록 슬롯</span>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-purple text-white" style="background-color: #6f42c1;">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">정산 관리</h6>
+                        <h2 class="card-text">{{ pending_settlements|default(0) }}</h2>
+                    </div>
+                    <i data-feather="dollar-sign" style="width: 48px; height: 48px;"></i>
+                </div>
+                <a href="{{ url_for('admin_settlements') }}" class="text-white">
+                    정산 관리 <i data-feather="chevron-right" class="ms-1"></i>
+                </a>
             </div>
         </div>
     </div>

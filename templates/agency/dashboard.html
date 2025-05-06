@@ -1,0 +1,199 @@
+{% extends "layout.html" %}
+
+{% block title %}대행사 대시보드{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>대행사 대시보드</h2>
+                <div>
+                    <span class="badge bg-primary">대행사: {{ current_user.company_name }}</span>
+                    <span class="badge bg-secondary">소속 총판: {{ current_user.distributor.company_name }}</span>
+                </div>
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-light mb-4 h-100">
+                        <div class="card-body text-center">
+                            <h1 class="display-4 mb-0">{{ current_user.shopping_slots.count() }}</h1>
+                            <p class="text-muted">쇼핑 슬롯</p>
+                            
+                            <div class="progress mb-3" style="height: 10px;">
+                                <div class="progress-bar bg-info" role="progressbar" style="width: {{ (current_user.shopping_slots.count() / current_user.quota.shopping_slots_limit * 100) if current_user.quota and current_user.quota.shopping_slots_limit > 0 else 0 }}%;" aria-valuenow="{{ current_user.shopping_slots.count() }}" aria-valuemin="0" aria-valuemax="{{ current_user.quota.shopping_slots_limit if current_user.quota else 0 }}"></div>
+                            </div>
+                            
+                            <div class="small text-muted">
+                                {% if current_user.quota %}
+                                    {{ current_user.shopping_slots.count() }}/{{ current_user.quota.shopping_slots_limit }} 슬롯 사용 중
+                                {% else %}
+                                    할당량이 설정되지 않았습니다.
+                                {% endif %}
+                            </div>
+                            
+                            <a href="{{ url_for('agency_shopping_slots') }}" class="btn btn-primary mt-3">쇼핑 슬롯 관리</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card bg-light mb-4 h-100">
+                        <div class="card-body text-center">
+                            <h1 class="display-4 mb-0">{{ current_user.place_slots.count() }}</h1>
+                            <p class="text-muted">플레이스 슬롯</p>
+                            
+                            <div class="progress mb-3" style="height: 10px;">
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (current_user.place_slots.count() / current_user.quota.place_slots_limit * 100) if current_user.quota and current_user.quota.place_slots_limit > 0 else 0 }}%;" aria-valuenow="{{ current_user.place_slots.count() }}" aria-valuemin="0" aria-valuemax="{{ current_user.quota.place_slots_limit if current_user.quota else 0 }}"></div>
+                            </div>
+                            
+                            <div class="small text-muted">
+                                {% if current_user.quota %}
+                                    {{ current_user.place_slots.count() }}/{{ current_user.quota.place_slots_limit }} 슬롯 사용 중
+                                {% else %}
+                                    할당량이 설정되지 않았습니다.
+                                {% endif %}
+                            </div>
+                            
+                            <a href="{{ url_for('agency_place_slots') }}" class="btn btn-success mt-3">플레이스 슬롯 관리</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-4">
+                    <div class="card bg-light mb-4 h-100">
+                        <div class="card-body text-center">
+                            <h1 class="display-4 mb-0">{{ current_user.settlements.count() }}</h1>
+                            <p class="text-muted">정산 내역</p>
+                            
+                            <div class="d-flex justify-content-around mt-3 mb-3">
+                                <div class="text-center">
+                                    <h5 class="mb-0">{{ current_user.settlements.filter_by(status='pending').count() }}</h5>
+                                    <small class="text-warning">대기중</small>
+                                </div>
+                                <div class="text-center">
+                                    <h5 class="mb-0">{{ current_user.settlements.filter_by(status='completed').count() }}</h5>
+                                    <small class="text-success">완료</small>
+                                </div>
+                            </div>
+                            
+                            <a href="{{ url_for('agency_settlements') }}" class="btn btn-dark mt-3">정산 내역 보기</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">최근 쇼핑 슬롯</h5>
+                            <a href="{{ url_for('agency_shopping_slots') }}" class="btn btn-sm btn-outline-primary">모두 보기</a>
+                        </div>
+                        <div class="card-body">
+                            {% set recent_shopping_slots = current_user.shopping_slots.order_by(ShoppingSlot.created_at.desc()).limit(5).all() %}
+                            {% if recent_shopping_slots %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>슬롯 이름</th>
+                                            <th>유형</th>
+                                            <th>상태</th>
+                                            <th>생성일</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for slot in recent_shopping_slots %}
+                                        <tr>
+                                            <td>{{ slot.slot_name }}</td>
+                                            <td>
+                                                {% if slot.slot_type == 'standard' %}
+                                                <span class="badge bg-info">일반</span>
+                                                {% else %}
+                                                <span class="badge bg-primary">프리미엄</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if slot.status == 'pending' %}
+                                                <span class="badge bg-warning">대기중</span>
+                                                {% elif slot.status == 'approved' %}
+                                                <span class="badge bg-success">승인됨</span>
+                                                {% elif slot.status == 'rejected' %}
+                                                <span class="badge bg-danger">거부됨</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ slot.created_at.strftime('%Y-%m-%d') }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                아직 쇼핑 슬롯이 없습니다. <a href="{{ url_for('agency_shopping_slots') }}">쇼핑 슬롯 관리</a>에서 슬롯을 생성하세요.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card mb-4">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">최근 플레이스 슬롯</h5>
+                            <a href="{{ url_for('agency_place_slots') }}" class="btn btn-sm btn-outline-success">모두 보기</a>
+                        </div>
+                        <div class="card-body">
+                            {% set recent_place_slots = current_user.place_slots.order_by(PlaceSlot.created_at.desc()).limit(5).all() %}
+                            {% if recent_place_slots %}
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>슬롯 이름</th>
+                                            <th>유형</th>
+                                            <th>상태</th>
+                                            <th>생성일</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for slot in recent_place_slots %}
+                                        <tr>
+                                            <td>{{ slot.slot_name }}</td>
+                                            <td>
+                                                {% if slot.slot_type == 'search' %}
+                                                <span class="badge bg-success">검색유입</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">저장</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if slot.status == 'pending' %}
+                                                <span class="badge bg-warning">대기중</span>
+                                                {% elif slot.status == 'approved' %}
+                                                <span class="badge bg-success">승인됨</span>
+                                                {% elif slot.status == 'rejected' %}
+                                                <span class="badge bg-danger">거부됨</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ slot.created_at.strftime('%Y-%m-%d') }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                아직 플레이스 슬롯이 없습니다. <a href="{{ url_for('agency_place_slots') }}">플레이스 슬롯 관리</a>에서 슬롯을 생성하세요.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
