@@ -1438,11 +1438,24 @@ def upload_shopping_slots():
 @login_required
 @agency_required
 def request_slot_quota():
-    """대행사의 슬롯 할당량 요청 페이지"""
-    # 소속 총판이 있는지 확인
-    if not current_user.parent_id:
-        flash('소속된 총판이 없어 슬롯 할당량을 요청할 수 없습니다.', 'danger')
-        return redirect(url_for('agency_dashboard'))
+    """사용자(어드민, 총판, 대행사)의 슬롯 할당량 요청 페이지"""
+    # 사용자 역할에 따른 리다이렉트 URL과 대시보드 설정
+    if current_user.is_admin():
+        dashboard_url = url_for('admin_dashboard')
+        approver_id = None  # 어드민은 자체 승인으로 처리
+    elif current_user.is_distributor():
+        dashboard_url = url_for('distributor_dashboard')
+        approver_id = None  # 총판은 자체 승인으로 처리
+    elif current_user.is_agency():
+        dashboard_url = url_for('agency_dashboard')
+        # 대행사는 소속 총판에게 요청
+        if not current_user.parent_id:
+            flash('소속된 총판이 없어 슬롯 할당량을 요청할 수 없습니다.', 'danger')
+            return redirect(dashboard_url)
+        approver_id = current_user.parent_id
+    else:
+        flash('슬롯 할당량을 요청할 권한이 없습니다.', 'danger')
+        return redirect(url_for('index'))
     
     # 폼 생성 (CSRF 토큰 포함)
     class SlotQuotaRequestForm(FlaskForm):
