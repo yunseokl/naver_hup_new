@@ -853,7 +853,66 @@ def distributor_approvals():
         SlotApproval.requester_id.in_(agency_ids)
     ).all()
     
-    return render_template('distributor/approvals.html', approvals=approvals)
+    # 슬롯 할당량 요청 정보
+    quota_requests = SlotQuotaRequest.query.filter(
+        SlotQuotaRequest.status == 'pending',
+        SlotQuotaRequest.requester_id.in_(agency_ids)
+    ).all()
+    
+    return render_template('distributor/approvals.html', 
+                          approvals=approvals, 
+                          quota_requests=quota_requests)
+
+@app.route('/distributor/approve-quota/<int:request_id>', methods=['POST'])
+@distributor_required
+def distributor_approve_quota(request_id):
+    """총판의 슬롯 할당량 요청 승인/거절 처리"""
+    quota_request = SlotQuotaRequest.query.get_or_404(request_id)
+    
+    # 이 승인 요청이 자신의 대행사에서 온 것인지 확인
+    agency_ids = [agency.id for agency in current_user.agencies]
+    if quota_request.requester_id not in agency_ids:
+        flash('이 요청을 처리할 권한이 없습니다.', 'danger')
+        return redirect(url_for('distributor_approvals'))
+    
+    action = request.form.get('action')
+    shopping_slot_price = request.form.get('shopping_slot_price', 0)
+    place_slot_price = request.form.get('place_slot_price', 0)
+    comment = request.form.get('comment', '')
+    
+    if action == 'approve':
+        # 요청 승인
+        quota_request.status = 'approved'
+        quota_request.approver_id = current_user.id
+        quota_request.processed_at = datetime.utcnow()
+        quota_request.response_comment = comment
+        
+        # 슬롯 가격 설정
+        if quota_request.shopping_slots_requested > 0 and shopping_slot_price:
+            quota_request.shopping_slot_price = int(shopping_slot_price)
+        
+        if quota_request.place_slots_requested > 0 and place_slot_price:
+            quota_request.place_slot_price = int(place_slot_price)
+        
+        # 대행사의 할당량 업데이트
+        agency = User.query.get(quota_request.requester_id)
+        if agency and agency.quota:
+            agency.quota.shopping_slots_limit += quota_request.shopping_slots_requested
+            agency.quota.place_slots_limit += quota_request.place_slots_requested
+            
+        flash('슬롯 할당량 요청이 승인되었습니다.', 'success')
+    
+    elif action == 'reject':
+        # 요청 거절
+        quota_request.status = 'rejected'
+        quota_request.approver_id = current_user.id
+        quota_request.processed_at = datetime.utcnow()
+        quota_request.response_comment = comment
+        
+        flash('슬롯 할당량 요청이 거절되었습니다.', 'warning')
+    
+    db.session.commit()
+    return redirect(url_for('distributor_approvals'))
 
 @app.route('/distributor/approve/<int:approval_id>/<action>')
 @distributor_required

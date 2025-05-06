@@ -1,346 +1,217 @@
-{% extends "layout.html" %}
+{% extends 'layout.html' %}
 
-{% block title %}승인 요청 관리 - 네이버 광고 슬롯 관리 시스템{% endblock %}
+{% block title %}승인 관리{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i data-feather="check-circle" class="me-2"></i> 승인 요청 관리</h2>
-    <a href="{{ url_for('distributor_dashboard') }}" class="btn btn-outline-secondary">
-        <i data-feather="arrow-left" class="me-1"></i> 대시보드로 돌아가기
-    </a>
-</div>
-
-<div class="card">
-    <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">승인 대기 중인 요청</h5>
-            <span class="badge bg-warning">{{ approvals|length }}</span>
-        </div>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>요청 ID</th>
-                        <th>대행사</th>
-                        <th>슬롯 타입</th>
-                        <th>슬롯명</th>
-                        <th>요청 유형</th>
-                        <th>요청일</th>
-                        <th>관리</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if approvals %}
-                        {% for approval in approvals %}
-                        <tr>
-                            <td>{{ approval.id }}</td>
-                            <td>{{ approval.requester.company_name }}</td>
-                            <td>
-                                <span class="badge {% if approval.slot_type == 'shopping' %}bg-success{% else %}bg-info{% endif %}">
-                                    {{ '쇼핑' if approval.slot_type == 'shopping' else '플레이스' }}
-                                </span>
-                            </td>
-                            <td>
-                                {% if approval.slot_type == 'shopping' %}
-                                    {{ approval.shopping_slot.slot_name }}
-                                {% else %}
-                                    {{ approval.place_slot.slot_name }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge 
-                                    {% if approval.approval_type == 'create' %}bg-primary{% 
-                                    elif approval.approval_type == 'update' %}bg-info{% 
-                                    else %}bg-danger{% endif %}">
-                                    {{ '생성' if approval.approval_type == 'create' else '수정' if approval.approval_type == 'update' else '삭제' }}
-                                </span>
-                            </td>
-                            <td>{{ approval.requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td>
-                                <div class="btn-group btn-group-sm">
-                                    <button type="button" class="btn btn-outline-primary view-request" data-id="{{ approval.id }}">
-                                        <i data-feather="eye"></i>
-                                    </button>
-                                    <a href="{{ url_for('distributor_approve_request', approval_id=approval.id, action='approve') }}" class="btn btn-outline-success">
-                                        <i data-feather="check"></i> 승인
-                                    </a>
-                                    <a href="{{ url_for('distributor_approve_request', approval_id=approval.id, action='reject') }}" class="btn btn-outline-danger">
-                                        <i data-feather="x"></i> 거절
-                                    </a>
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="display-6 mb-3">승인 요청 관리</h2>
+            <p class="lead">대행사의 승인 요청을 관리합니다.</p>
+            
+            <!-- 슬롯 할당량 요청 섹션 -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">슬롯 할당량 승인 요청</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if quota_requests %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>요청자</th>
+                                    <th>요청 유형</th>
+                                    <th>요청 수량</th>
+                                    <th>기간</th>
+                                    <th>요청일</th>
+                                    <th>상태</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in quota_requests %}
+                                <tr>
+                                    <td>{{ request.requester.company_name }}</td>
+                                    <td>
+                                        {% if request.shopping_slots_requested > 0 and request.place_slots_requested > 0 %}
+                                            쇼핑/플레이스
+                                        {% elif request.shopping_slots_requested > 0 %}
+                                            쇼핑 ({{ request.shopping_slot_type }})
+                                        {% elif request.place_slots_requested > 0 %}
+                                            플레이스 ({{ request.place_slot_type }})
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.shopping_slots_requested > 0 %}
+                                            쇼핑: {{ request.shopping_slots_requested }}개<br>
+                                        {% endif %}
+                                        {% if request.place_slots_requested > 0 %}
+                                            플레이스: {{ request.place_slots_requested }}개
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ request.start_date.strftime('%Y-%m-%d') }} ~ {{ request.end_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ request.requested_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if request.status == 'pending' %}
+                                            <span class="badge bg-warning">대기중</span>
+                                        {% elif request.status == 'approved' %}
+                                            <span class="badge bg-success">승인됨</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">거절됨</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.status == 'pending' %}
+                                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#approveQuotaModal{{ request.id }}">처리</button>
+                                        {% else %}
+                                        <button class="btn btn-sm btn-outline-secondary" disabled>처리완료</button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                
+                                <!-- 할당량 요청 처리 모달 -->
+                                <div class="modal fade" id="approveQuotaModal{{ request.id }}" tabindex="-1" aria-labelledby="approveQuotaModalLabel{{ request.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="approveQuotaModalLabel{{ request.id }}">슬롯 할당량 요청 처리</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ url_for('distributor_approve_quota', request_id=request.id) }}" method="post">
+                                                <div class="modal-body">
+                                                    <h5>{{ request.requester.company_name }}의 요청</h5>
+                                                    <div class="row mb-3">
+                                                        <div class="col-md-6">
+                                                            <p><strong>요청일:</strong> {{ request.requested_at.strftime('%Y-%m-%d') }}</p>
+                                                            <p><strong>사용 기간:</strong> {{ request.start_date.strftime('%Y-%m-%d') }} ~ {{ request.end_date.strftime('%Y-%m-%d') }}</p>
+                                                        </div>
+                                                        <div class="col-md-6">
+                                                            {% if request.shopping_slots_requested > 0 %}
+                                                            <p><strong>쇼핑 슬롯:</strong> {{ request.shopping_slots_requested }}개 ({{ request.shopping_slot_type }})</p>
+                                                            {% endif %}
+                                                            {% if request.place_slots_requested > 0 %}
+                                                            <p><strong>플레이스 슬롯:</strong> {{ request.place_slots_requested }}개 ({{ request.place_slot_type }})</p>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="alert alert-info">
+                                                        <h6 class="alert-heading">요청 이유</h6>
+                                                        <p>{{ request.request_reason or '요청 이유가 제공되지 않았습니다.' }}</p>
+                                                    </div>
+                                                    
+                                                    <hr>
+                                                    
+                                                    <div class="row mb-3">
+                                                        {% if request.shopping_slots_requested > 0 %}
+                                                        <div class="col-md-6">
+                                                            <label for="shopping_slot_price" class="form-label">쇼핑 슬롯 단가 (원)</label>
+                                                            <input type="number" class="form-control" id="shopping_slot_price" name="shopping_slot_price" min="0" placeholder="슬롯당 가격" required>
+                                                            <div class="form-text">대행사에 적용할 쇼핑 슬롯 단가를 입력하세요.</div>
+                                                        </div>
+                                                        {% endif %}
+                                                        
+                                                        {% if request.place_slots_requested > 0 %}
+                                                        <div class="col-md-6">
+                                                            <label for="place_slot_price" class="form-label">플레이스 슬롯 단가 (원)</label>
+                                                            <input type="number" class="form-control" id="place_slot_price" name="place_slot_price" min="0" placeholder="슬롯당 가격" required>
+                                                            <div class="form-text">대행사에 적용할 플레이스 슬롯 단가를 입력하세요.</div>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label for="comment" class="form-label">코멘트</label>
+                                                        <textarea class="form-control" id="comment" name="comment" rows="3" placeholder="승인 또는 거절 이유를 입력하세요."></textarea>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer justify-content-between">
+                                                    <button type="submit" class="btn btn-danger" name="action" value="reject">거절</button>
+                                                    <button type="submit" class="btn btn-success" name="action" value="approve">승인</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
                                 </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <tr>
-                            <td colspan="7" class="text-center py-4">
-                                승인 대기 중인 요청이 없습니다.
-                            </td>
-                        </tr>
+                    <div class="p-4 text-center">
+                        <p class="mb-0">슬롯 할당량 요청이 없습니다.</p>
+                    </div>
                     {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- 이전 승인 내역 -->
-<div class="card mt-4">
-    <div class="card-header">
-        <h5 class="mb-0">처리된 승인 요청</h5>
-    </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>요청 ID</th>
-                        <th>대행사</th>
-                        <th>슬롯 타입</th>
-                        <th>슬롯명</th>
-                        <th>요청 유형</th>
-                        <th>상태</th>
-                        <th>처리일</th>
-                        <th>조회</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if processed_approvals %}
-                        {% for approval in processed_approvals %}
-                        <tr>
-                            <td>{{ approval.id }}</td>
-                            <td>{{ approval.requester.company_name }}</td>
-                            <td>
-                                <span class="badge {% if approval.slot_type == 'shopping' %}bg-success{% else %}bg-info{% endif %}">
-                                    {{ '쇼핑' if approval.slot_type == 'shopping' else '플레이스' }}
-                                </span>
-                            </td>
-                            <td>
-                                {% if approval.slot_type == 'shopping' %}
-                                    {{ approval.shopping_slot.slot_name }}
-                                {% else %}
-                                    {{ approval.place_slot.slot_name }}
-                                {% endif %}
-                            </td>
-                            <td>
-                                <span class="badge 
-                                    {% if approval.approval_type == 'create' %}bg-primary{% 
-                                    elif approval.approval_type == 'update' %}bg-info{% 
-                                    else %}bg-danger{% endif %}">
-                                    {{ '생성' if approval.approval_type == 'create' else '수정' if approval.approval_type == 'update' else '삭제' }}
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge 
-                                    {% if approval.status == 'approved' %}bg-success{% 
-                                    else %}bg-danger{% endif %}">
-                                    {{ '승인됨' if approval.status == 'approved' else '거절됨' }}
-                                </span>
-                            </td>
-                            <td>{{ approval.processed_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td>
-                                <button type="button" class="btn btn-sm btn-outline-primary view-request" data-id="{{ approval.id }}">
-                                    <i data-feather="eye"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        {% endfor %}
+                </div>
+            </div>
+            
+            <!-- 슬롯 승인 요청 섹션 -->
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">슬롯 승인 요청</h5>
+                </div>
+                <div class="card-body p-0">
+                    {% if approvals %}
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>요청자</th>
+                                    <th>슬롯 유형</th>
+                                    <th>슬롯 이름</th>
+                                    <th>요청 유형</th>
+                                    <th>요청일</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for approval in approvals %}
+                                <tr>
+                                    <td>{{ approval.requester.company_name }}</td>
+                                    <td>
+                                        {% if approval.slot_type == 'shopping' %}
+                                            쇼핑
+                                        {% else %}
+                                            플레이스
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if approval.slot_type == 'shopping' %}
+                                            {{ approval.shopping_slot.slot_name }}
+                                        {% else %}
+                                            {{ approval.place_slot.slot_name }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if approval.approval_type == 'create' %}
+                                            <span class="badge bg-success">생성</span>
+                                        {% elif approval.approval_type == 'update' %}
+                                            <span class="badge bg-info">수정</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">삭제</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ approval.requested_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('distributor_approve_request', approval_id=approval.id, action='approve') }}" class="btn btn-success">승인</a>
+                                            <a href="{{ url_for('distributor_approve_request', approval_id=approval.id, action='reject') }}" class="btn btn-danger">거절</a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <tr>
-                            <td colspan="8" class="text-center py-4">
-                                처리된 승인 요청이 없습니다.
-                            </td>
-                        </tr>
+                    <div class="p-4 text-center">
+                        <p class="mb-0">슬롯 승인 요청이 없습니다.</p>
+                    </div>
                     {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div class="card-footer">
-        <nav aria-label="Page navigation">
-            <ul class="pagination justify-content-center mb-0">
-                <li class="page-item disabled">
-                    <a class="page-link" href="#" tabindex="-1">이전</a>
-                </li>
-                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                <li class="page-item">
-                    <a class="page-link" href="#">다음</a>
-                </li>
-            </ul>
-        </nav>
-    </div>
-</div>
-
-<!-- 요청 상세 정보 모달 -->
-<div class="modal fade" id="viewRequestModal" tabindex="-1" aria-labelledby="viewRequestModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="viewRequestModalLabel">승인 요청 상세 정보</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">요청 ID</label>
-                            <span id="view_request_id"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">대행사</label>
-                            <span id="view_agency"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">요청 유형</label>
-                            <span id="view_request_type"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">요청일</label>
-                            <span id="view_requested_at"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">처리일</label>
-                            <span id="view_processed_at"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">상태</label>
-                            <span id="view_status"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <h6 class="border-bottom pb-2 mb-3">슬롯 정보</h6>
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">슬롯 타입</label>
-                            <span id="view_slot_type"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">슬롯명</label>
-                            <span id="view_slot_name"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-6 shopping-details">
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">상품명</label>
-                            <span id="view_product_name"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">키워드</label>
-                            <span id="view_keywords"></span>
-                        </div>
-                    </div>
-                    <div class="col-md-6 place-details" style="display: none;">
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">장소명</label>
-                            <span id="view_place_name"></span>
-                        </div>
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">주소</label>
-                            <span id="view_address"></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="row">
-                    <div class="col-12">
-                        <div class="mb-3">
-                            <label class="fw-bold d-block">메모</label>
-                            <p id="view_comment" class="mb-0"></p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div id="view_response_container" style="display: none;">
-                    <h6 class="border-bottom pb-2 mb-3">승인/거절 응답</h6>
-                    <div class="mb-3">
-                        <label class="fw-bold d-block">응답 코멘트</label>
-                        <p id="view_response" class="mb-0"></p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
-                <div id="pending_actions" style="display: none;">
-                    <a href="#" id="approve_link" class="btn btn-success">
-                        <i data-feather="check" class="me-1"></i> 승인
-                    </a>
-                    <a href="#" id="reject_link" class="btn btn-danger">
-                        <i data-feather="x" class="me-1"></i> 거절
-                    </a>
                 </div>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // 요청 조회 기능
-        const viewButtons = document.querySelectorAll('.view-request');
-        const viewModal = new bootstrap.Modal(document.getElementById('viewRequestModal'));
-        
-        viewButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                const requestId = this.getAttribute('data-id');
-                
-                // Ajax로 요청 정보 조회 (실제로는 서버에서 데이터를 가져와야 함)
-                // 여기서는 임의의 데이터로 모달 채우기
-                document.getElementById('view_request_id').textContent = requestId;
-                document.getElementById('view_agency').textContent = "대행사 이름";
-                document.getElementById('view_request_type').textContent = "생성";
-                document.getElementById('view_requested_at').textContent = "2025-05-06 12:34:56";
-                document.getElementById('view_processed_at').textContent = "";
-                document.getElementById('view_status').innerHTML = '<span class="badge bg-warning">대기 중</span>';
-                
-                document.getElementById('view_slot_type').textContent = "쇼핑";
-                document.getElementById('view_slot_name').textContent = "슬롯 이름";
-                
-                // 쇼핑/플레이스 구분하여 표시
-                if (Math.random() > 0.5) {
-                    document.querySelector('.shopping-details').style.display = 'block';
-                    document.querySelector('.place-details').style.display = 'none';
-                    document.getElementById('view_product_name').textContent = "제품명";
-                    document.getElementById('view_keywords').textContent = "키워드1, 키워드2";
-                } else {
-                    document.querySelector('.shopping-details').style.display = 'none';
-                    document.querySelector('.place-details').style.display = 'block';
-                    document.getElementById('view_place_name').textContent = "장소명";
-                    document.getElementById('view_address').textContent = "주소...";
-                }
-                
-                document.getElementById('view_comment').textContent = "메모 내용...";
-                
-                // 승인/거절 여부에 따라 UI 조정
-                if (Math.random() > 0.5) {
-                    // 처리 대기 중인 경우
-                    document.getElementById('pending_actions').style.display = 'block';
-                    document.getElementById('view_response_container').style.display = 'none';
-                    
-                    // 버튼에 URL 설정
-                    document.getElementById('approve_link').href = `/distributor/approve/${requestId}/approve`;
-                    document.getElementById('reject_link').href = `/distributor/approve/${requestId}/reject`;
-                } else {
-                    // 이미 처리된 경우
-                    document.getElementById('pending_actions').style.display = 'none';
-                    document.getElementById('view_response_container').style.display = 'block';
-                    document.getElementById('view_response').textContent = "승인/거절 응답 코멘트...";
-                    document.getElementById('view_processed_at').textContent = "2025-05-06 14:45:30";
-                    document.getElementById('view_status').innerHTML = '<span class="badge bg-success">승인됨</span>';
-                }
-                
-                viewModal.show();
-            });
-        });
-    });
-</script>
 {% endblock %}
