@@ -462,14 +462,14 @@ def distributor_slots():
     
     if search:
         if slot_type == 'shopping':
-            query = query.filter(or_(
+            query = query.filter(db.or_(
                 ShoppingSlot.slot_name.like(f'%{search}%'),
                 ShoppingSlot.product_name.like(f'%{search}%'),
                 ShoppingSlot.keywords.like(f'%{search}%'),
                 ShoppingSlot.store_name.like(f'%{search}%')
             ))
         else:
-            query = query.filter(or_(
+            query = query.filter(db.or_(
                 PlaceSlot.slot_name.like(f'%{search}%'),
                 PlaceSlot.place_name.like(f'%{search}%'),
                 PlaceSlot.address.like(f'%{search}%'),

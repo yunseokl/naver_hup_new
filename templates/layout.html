@@ -45,6 +45,18 @@
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ url_for('distributor_agencies') }}">대행사 관리</a>
                                 </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle" href="#" id="slotDropdown" role="button" data-bs-toggle="dropdown">
+                                        슬롯 관리
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{{ url_for('distributor_slots', type='shopping') }}">쇼핑 슬롯</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('distributor_slots', type='place') }}">플레이스 슬롯</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('export_slots', type='shopping', template='true') }}">쇼핑 슬롯 양식</a></li>
+                                        <li><a class="dropdown-item" href="{{ url_for('export_slots', type='place', template='true') }}">플레이스 슬롯 양식</a></li>
+                                    </ul>
+                                </li>
                                 <li class="nav-item">
                                     <a class="nav-link" href="{{ url_for('distributor_approvals') }}">승인 요청</a>
                                 </li>

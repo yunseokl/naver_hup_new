@@ -29,32 +29,36 @@
         </div>
     </div>
     <div class="col-md-4">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">쇼핑 슬롯</h6>
-                        <h2 class="card-text">{{ shopping_slots }}</h2>
+        <a href="{{ url_for('distributor_slots', type='shopping') }}" class="text-decoration-none">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">쇼핑 슬롯</h6>
+                            <h2 class="card-text">{{ shopping_slots }}</h2>
+                        </div>
+                        <i data-feather="shopping-bag" style="width: 48px; height: 48px;"></i>
                     </div>
-                    <i data-feather="shopping-bag" style="width: 48px; height: 48px;"></i>
+                    <span class="text-white">쇼핑 슬롯 관리 <i data-feather="chevron-right" class="ms-1"></i></span>
                 </div>
-                <span class="text-white">대행사 등록 슬롯</span>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-md-4">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title">플레이스 슬롯</h6>
-                        <h2 class="card-text">{{ place_slots }}</h2>
+        <a href="{{ url_for('distributor_slots', type='place') }}" class="text-decoration-none">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">플레이스 슬롯</h6>
+                            <h2 class="card-text">{{ place_slots }}</h2>
+                        </div>
+                        <i data-feather="map-pin" style="width: 48px; height: 48px;"></i>
                     </div>
-                    <i data-feather="map-pin" style="width: 48px; height: 48px;"></i>
+                    <span class="text-white">플레이스 슬롯 관리 <i data-feather="chevron-right" class="ms-1"></i></span>
                 </div>
-                <span class="text-white">대행사 등록 슬롯</span>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 
