@@ -76,7 +76,7 @@ class ShoppingSlot(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
     # 상태 정보
-    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, active, inactive
+    status = db.Column(db.String(20), default='pending')  # empty, pending, approved, rejected, live, inactive
     
     # 슬롯 기본 정보
     slot_name = db.Column(db.String(100), nullable=False)  # 슬롯 이름
@@ -137,7 +137,7 @@ class PlaceSlot(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     
     # 상태 정보
-    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected, active, inactive
+    status = db.Column(db.String(20), default='pending')  # empty, pending, approved, rejected, live, inactive
     
     # 슬롯 기본 정보
     slot_name = db.Column(db.String(100), nullable=False)  # 슬롯 이름
