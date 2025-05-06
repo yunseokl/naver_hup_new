@@ -3087,7 +3087,7 @@ def agency_settlement_detail(settlement_id):
 
 @app.route('/bulk-save-shopping-slots', methods=['POST'])
 @login_required
-@agency_required
+@distributor_required
 def bulk_save_shopping_slots():
     """쇼핑 슬롯 일괄 저장"""
     data = request.json
@@ -3096,10 +3096,14 @@ def bulk_save_shopping_slots():
     if not slot_ids:
         return jsonify({'success': False, 'message': "저장할 슬롯을 선택해주세요."}), 400
     
-    # 선택된 슬롯 조회
+    # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회 가능하도록 수정
+    agency_ids = [agency.id for agency in current_user.agencies.all()]
+    user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
+    
+    # 선택된 슬롯 조회 - 총판 관리 하위의 슬롯들만 가능
     slots = ShoppingSlot.query.filter(
         ShoppingSlot.id.in_(slot_ids),
-        ShoppingSlot.user_id == current_user.id,
+        ShoppingSlot.user_id.in_(user_ids),
         ShoppingSlot.status == 'approved'  # 승인된 슬롯만 처리
     ).all()
     
@@ -3117,14 +3121,20 @@ def bulk_save_shopping_slots():
 
 @app.route('/bulk-delete-shopping-slots', methods=['POST'])
 @login_required
-@agency_required
+@distributor_required
 def bulk_delete_shopping_slots():
     """쇼핑 슬롯 전체 삭제"""
-    # 사용자 본인의 슬롯만 조회
-    slots = ShoppingSlot.query.filter_by(user_id=current_user.id).all()
+    # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회 가능하도록 수정
+    agency_ids = [agency.id for agency in current_user.agencies.all()]
+    user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
+    
+    # 필터 적용
+    slots = ShoppingSlot.query.filter(ShoppingSlot.user_id.in_(user_ids)).all()
     
     if not slots:
         return jsonify({'success': False, 'message': "삭제할 슬롯이 없습니다."}), 404
+    
+    count = len(slots)
     
     # 슬롯 상태에 따라 다르게 처리
     pending_slots = []
@@ -3147,14 +3157,13 @@ def bulk_delete_shopping_slots():
     for slot in slots:
         db.session.delete(slot)
     
-    db.session.commit()
-    
     # 할당량 사용 업데이트
     quota = SlotQuota.query.filter_by(user_id=current_user.id).first()
     if quota:
         quota.shopping_slots_used = 0
-        db.session.commit()
+        
+    db.session.commit()
     
-    return jsonify({'success': True, 'count': len(slots)})
+    return jsonify({'success': True, 'count': count})
 
 

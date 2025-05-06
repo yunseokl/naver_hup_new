@@ -590,5 +590,141 @@
         const detailView = document.getElementById('slotDetailView');
         detailView.classList.add('d-none');
     }
+
+    // 일괄 저장 및 전체 삭제 기능
+    document.addEventListener('DOMContentLoaded', function() {
+        // 일괄 저장 버튼 클릭 시 모달 표시
+        const bulkSaveBtn = document.getElementById('bulkSaveBtn');
+        if (bulkSaveBtn) {
+            bulkSaveBtn.addEventListener('click', function() {
+                // 선택된 슬롯 확인
+                const selectedSlots = Array.from(document.querySelectorAll('.slot-checkbox:checked')).map(cb => cb.value);
+                if (selectedSlots.length === 0) {
+                    alert('활성화할 슬롯을 최소 하나 이상 선택해주세요.');
+                    return;
+                }
+                
+                // 모달 표시
+                const bulkSaveModal = new bootstrap.Modal(document.getElementById('bulkSaveModal'));
+                bulkSaveModal.show();
+            });
+        }
+        
+        // 전체 삭제 버튼 클릭 시 모달 표시
+        const bulkDeleteBtn = document.getElementById('bulkDeleteBtn');
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.addEventListener('click', function() {
+                const bulkDeleteModal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+                bulkDeleteModal.show();
+            });
+        }
+        
+        // 일괄 저장 확인 버튼 클릭 시 처리
+        const confirmBulkSave = document.getElementById('confirmBulkSave');
+        if (confirmBulkSave) {
+            confirmBulkSave.addEventListener('click', function() {
+                const selectedSlots = Array.from(document.querySelectorAll('.slot-checkbox:checked')).map(cb => cb.value);
+                
+                // AJAX 요청으로 선택된 슬롯 일괄 저장
+                fetch('{{ url_for("bulk_save_shopping_slots") if slot_type == "shopping" else url_for("bulk_save_place_slots") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ slot_ids: selectedSlots })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.count + '개의 슬롯이 활성화되었습니다.');
+                        window.location.reload();
+                    } else {
+                        alert('저장 실패: ' + (data.message || '알 수 없는 오류'));
+                    }
+                    
+                    // 모달 닫기
+                    const bulkSaveModal = bootstrap.Modal.getInstance(document.getElementById('bulkSaveModal'));
+                    bulkSaveModal.hide();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('오류가 발생했습니다.');
+                    
+                    // 모달 닫기
+                    const bulkSaveModal = bootstrap.Modal.getInstance(document.getElementById('bulkSaveModal'));
+                    bulkSaveModal.hide();
+                });
+            });
+        }
+        
+        // 전체 삭제 확인 버튼 클릭 시 처리
+        const confirmBulkDelete = document.getElementById('confirmBulkDelete');
+        if (confirmBulkDelete) {
+            confirmBulkDelete.addEventListener('click', function() {
+                // AJAX 요청으로 모든 슬롯 삭제
+                fetch('{{ url_for("bulk_delete_shopping_slots") if slot_type == "shopping" else url_for("bulk_delete_place_slots") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.count + '개의 슬롯이 삭제되었습니다.');
+                        window.location.reload();
+                    } else {
+                        alert('삭제 실패: ' + (data.message || '알 수 없는 오류'));
+                    }
+                    
+                    // 모달 닫기
+                    const bulkDeleteModal = bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal'));
+                    bulkDeleteModal.hide();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('오류가 발생했습니다.');
+                    
+                    // 모달 닫기
+                    const bulkDeleteModal = bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal'));
+                    bulkDeleteModal.hide();
+                });
+            });
+        }
+        
+        // 필터 검색 버튼 이벤트
+        const searchButton = document.getElementById('searchButton');
+        if (searchButton) {
+            searchButton.addEventListener('click', function() {
+                const status = document.getElementById('statusFilter').value;
+                const agency_id = document.getElementById('agencyFilter').value;
+                const search = document.getElementById('searchInput').value;
+                
+                let url = '{{ url_for("distributor_slots") }}?type={{ slot_type }}';
+                
+                if (status) url += '&status=' + status;
+                if (agency_id) url += '&agency_id=' + agency_id;
+                if (search) url += '&search=' + encodeURIComponent(search);
+                
+                window.location.href = url;
+            });
+        }
+        
+        // 필터 초기화 버튼 이벤트
+        const resetButton = document.getElementById('resetButton');
+        if (resetButton) {
+            resetButton.addEventListener('click', function() {
+                document.getElementById('statusFilter').value = '';
+                document.getElementById('agencyFilter').value = '';
+                document.getElementById('searchInput').value = '';
+                
+                // 필터 초기화 후 페이지 리로드
+                window.location.href = '{{ url_for("distributor_slots") }}?type={{ slot_type }}';
+            });
+        }
+    });
 </script>
 {% endblock %}
