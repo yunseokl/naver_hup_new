@@ -153,6 +153,9 @@
                                     <span class="badge bg-success">승인됨: {{ approved_shopping_slots }}</span>
                                 </div>
                                 <div>
+                                    <span class="badge bg-primary">라이브: {{ live_shopping_slots }}</span>
+                                </div>
+                                <div>
                                     <span class="badge bg-danger">거절됨: {{ rejected_shopping_slots }}</span>
                                 </div>
                             </div>
@@ -165,6 +168,10 @@
                                 <div class="progress-bar bg-success" role="progressbar" style="width: {{ (approved_shopping_slots / shopping_slots_count) * 100 }}%" 
                                      aria-valuenow="{{ approved_shopping_slots }}" aria-valuemin="0" aria-valuemax="{{ shopping_slots_count }}">
                                     {{ approved_shopping_slots }}
+                                </div>
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (live_shopping_slots / shopping_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ live_shopping_slots }}" aria-valuemin="0" aria-valuemax="{{ shopping_slots_count }}">
+                                    {{ live_shopping_slots }}
                                 </div>
                                 <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (rejected_shopping_slots / shopping_slots_count) * 100 }}%" 
                                      aria-valuenow="{{ rejected_shopping_slots }}" aria-valuemin="0" aria-valuemax="{{ shopping_slots_count }}">
@@ -191,6 +198,9 @@
                                     <span class="badge bg-success">승인됨: {{ approved_place_slots }}</span>
                                 </div>
                                 <div>
+                                    <span class="badge bg-primary">라이브: {{ live_place_slots }}</span>
+                                </div>
+                                <div>
                                     <span class="badge bg-danger">거절됨: {{ rejected_place_slots }}</span>
                                 </div>
                             </div>
@@ -203,6 +213,10 @@
                                 <div class="progress-bar bg-success" role="progressbar" style="width: {{ (approved_place_slots / place_slots_count) * 100 }}%" 
                                      aria-valuenow="{{ approved_place_slots }}" aria-valuemin="0" aria-valuemax="{{ place_slots_count }}">
                                     {{ approved_place_slots }}
+                                </div>
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (live_place_slots / place_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ live_place_slots }}" aria-valuemin="0" aria-valuemax="{{ place_slots_count }}">
+                                    {{ live_place_slots }}
                                 </div>
                                 <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (rejected_place_slots / place_slots_count) * 100 }}%" 
                                      aria-valuenow="{{ rejected_place_slots }}" aria-valuemin="0" aria-valuemax="{{ place_slots_count }}">
