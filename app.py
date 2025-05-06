@@ -11,6 +11,7 @@ from flask import g, current_app
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy import or_
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from functools import wraps
 from flask_wtf import FlaskForm
@@ -341,6 +342,381 @@ def admin_approvals():
     """관리자용 승인 요청 관리 페이지"""
     approvals = SlotApproval.query.filter_by(status='pending').all()
     return render_template('admin/approvals.html', approvals=approvals)
+
+@app.route('/admin/shopping_slots')
+@admin_required
+def admin_shopping_slots():
+    """관리자 쇼핑 슬롯 관리"""
+    # 필터 파라미터
+    owner_type = request.args.get('owner_type', '')
+    status = request.args.get('status', '')
+    slot_type = request.args.get('slot_type', '')
+    search = request.args.get('search', '')
+    
+    # 기본 쿼리
+    query = ShoppingSlot.query.join(User)
+    
+    # 필터 적용
+    if owner_type:
+        if owner_type == 'distributor':
+            # 총판 소유 슬롯
+            distributor_ids = [u.id for u in User.query.join(Role).filter(Role.name == 'distributor')]
+            query = query.filter(ShoppingSlot.user_id.in_(distributor_ids))
+        elif owner_type == 'agency':
+            # 대행사 소유 슬롯
+            agency_ids = [u.id for u in User.query.join(Role).filter(Role.name == 'agency')]
+            query = query.filter(ShoppingSlot.user_id.in_(agency_ids))
+    
+    if status:
+        query = query.filter(ShoppingSlot.status == status)
+    
+    if slot_type:
+        query = query.filter(ShoppingSlot.slot_type == slot_type)
+    
+    if search:
+        query = query.filter(
+            or_(
+                ShoppingSlot.slot_name.ilike(f'%{search}%'),
+                ShoppingSlot.product_name.ilike(f'%{search}%'),
+                User.company_name.ilike(f'%{search}%')
+            )
+        )
+    
+    # 결과 가져오기
+    slots = query.all()
+    
+    # 총판 및 대행사 목록 (슬롯 추가 모달용)
+    distributors = User.query.join(Role).filter(Role.name == 'distributor').all()
+    agencies = User.query.join(Role).filter(Role.name == 'agency').all()
+    
+    return render_template('admin/shopping_slots.html',
+                          slots=slots,
+                          distributors=distributors,
+                          agencies=agencies,
+                          owner_type=owner_type,
+                          status=status,
+                          slot_type=slot_type,
+                          search=search)
+
+@app.route('/admin/place_slots')
+@admin_required
+def admin_place_slots():
+    """관리자 플레이스 슬롯 관리"""
+    # 필터 파라미터
+    owner_type = request.args.get('owner_type', '')
+    status = request.args.get('status', '')
+    slot_type = request.args.get('slot_type', '')
+    search = request.args.get('search', '')
+    
+    # 기본 쿼리
+    query = PlaceSlot.query.join(User)
+    
+    # 필터 적용
+    if owner_type:
+        if owner_type == 'distributor':
+            # 총판 소유 슬롯
+            distributor_ids = [u.id for u in User.query.join(Role).filter(Role.name == 'distributor')]
+            query = query.filter(PlaceSlot.user_id.in_(distributor_ids))
+        elif owner_type == 'agency':
+            # 대행사 소유 슬롯
+            agency_ids = [u.id for u in User.query.join(Role).filter(Role.name == 'agency')]
+            query = query.filter(PlaceSlot.user_id.in_(agency_ids))
+    
+    if status:
+        query = query.filter(PlaceSlot.status == status)
+    
+    if slot_type:
+        query = query.filter(PlaceSlot.slot_type == slot_type)
+    
+    if search:
+        query = query.filter(
+            or_(
+                PlaceSlot.slot_name.ilike(f'%{search}%'),
+                PlaceSlot.place_name.ilike(f'%{search}%'),
+                User.company_name.ilike(f'%{search}%')
+            )
+        )
+    
+    # 결과 가져오기
+    slots = query.all()
+    
+    # 총판 및 대행사 목록 (슬롯 추가 모달용)
+    distributors = User.query.join(Role).filter(Role.name == 'distributor').all()
+    agencies = User.query.join(Role).filter(Role.name == 'agency').all()
+    
+    return render_template('admin/place_slots.html',
+                          slots=slots,
+                          distributors=distributors,
+                          agencies=agencies,
+                          owner_type=owner_type,
+                          status=status,
+                          slot_type=slot_type,
+                          search=search)
+
+@app.route('/admin/shopping_slots/create', methods=['POST'])
+@admin_required
+def admin_create_shopping_slot():
+    """관리자가 쇼핑 슬롯 생성"""
+    try:
+        # 폼 데이터 가져오기
+        user_id = request.form.get('user_id')
+        slot_name = request.form.get('slot_name')
+        slot_type = request.form.get('slot_type', 'standard')
+        status = request.form.get('status', 'empty')
+        slot_price = int(request.form.get('slot_price', 0))
+        notes = request.form.get('notes', '')
+        
+        # 날짜 처리
+        start_date = None
+        if request.form.get('start_date'):
+            start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+            
+        end_date = None
+        if request.form.get('end_date'):
+            end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        
+        # 쇼핑 슬롯 생성
+        slot = ShoppingSlot(
+            user_id=user_id,
+            slot_name=slot_name,
+            start_date=start_date,
+            end_date=end_date,
+            status=status,
+            slot_price=slot_price,
+            slot_type=slot_type,
+            notes=notes,
+            admin_price=slot_price  # 관리자가 생성한 슬롯은 기본적으로 단가와 정산가가 동일
+        )
+        
+        db.session.add(slot)
+        db.session.commit()
+        
+        flash(f'쇼핑 슬롯 "{slot_name}"이(가) 성공적으로 생성되었습니다.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'슬롯 생성 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_shopping_slots'))
+
+@app.route('/admin/place_slots/create', methods=['POST'])
+@admin_required
+def admin_create_place_slot():
+    """관리자가 플레이스 슬롯 생성"""
+    try:
+        # 폼 데이터 가져오기
+        user_id = request.form.get('user_id')
+        slot_name = request.form.get('slot_name')
+        slot_type = request.form.get('slot_type', 'search')
+        status = request.form.get('status', 'empty')
+        slot_price = int(request.form.get('slot_price', 0))
+        notes = request.form.get('notes', '')
+        
+        # 날짜 처리
+        start_date = None
+        if request.form.get('start_date'):
+            start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+            
+        end_date = None
+        if request.form.get('end_date'):
+            end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        
+        # 플레이스 슬롯 생성
+        slot = PlaceSlot(
+            user_id=user_id,
+            slot_name=slot_name,
+            start_date=start_date,
+            end_date=end_date,
+            status=status,
+            slot_price=slot_price,
+            slot_type=slot_type,
+            notes=notes,
+            admin_price=slot_price  # 관리자가 생성한 슬롯은 기본적으로 단가와 정산가가 동일
+        )
+        
+        db.session.add(slot)
+        db.session.commit()
+        
+        flash(f'플레이스 슬롯 "{slot_name}"이(가) 성공적으로 생성되었습니다.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'슬롯 생성 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_place_slots'))
+
+@app.route('/admin/shopping_slots/edit/<int:slot_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_shopping_slot(slot_id):
+    """관리자가 쇼핑 슬롯 편집"""
+    slot = ShoppingSlot.query.get_or_404(slot_id)
+    
+    if request.method == 'POST':
+        try:
+            # 기본 정보 업데이트
+            slot.slot_name = request.form.get('slot_name')
+            slot.status = request.form.get('status')
+            slot.slot_type = request.form.get('slot_type')
+            slot.slot_price = int(request.form.get('slot_price', 0))
+            slot.admin_price = int(request.form.get('admin_price', 0))
+            slot.notes = request.form.get('notes', '')
+            
+            # 날짜 처리
+            if request.form.get('start_date'):
+                slot.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+                
+            if request.form.get('end_date'):
+                slot.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+            
+            # 슬롯 상세 정보 업데이트
+            if request.form.get('product_name'):
+                slot.product_name = request.form.get('product_name')
+                
+            if request.form.get('product_id'):
+                slot.product_id = request.form.get('product_id')
+                
+            if request.form.get('store_name'):
+                slot.store_name = request.form.get('store_name')
+                
+            if request.form.get('keywords'):
+                slot.keywords = request.form.get('keywords')
+                
+            if request.form.get('price'):
+                slot.price = int(request.form.get('price', 0))
+                
+            if request.form.get('sale_price'):
+                slot.sale_price = int(request.form.get('sale_price', 0))
+                
+            if request.form.get('shopping_campaign_id'):
+                slot.shopping_campaign_id = request.form.get('shopping_campaign_id')
+                
+            if request.form.get('product_image_url'):
+                slot.product_image_url = request.form.get('product_image_url')
+            
+            db.session.commit()
+            flash('쇼핑 슬롯이 성공적으로 업데이트 되었습니다.', 'success')
+            return redirect(url_for('admin_shopping_slots'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'슬롯 업데이트 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    # 총판 및 대행사 목록
+    distributors = User.query.join(Role).filter(Role.name == 'distributor').all()
+    agencies = User.query.join(Role).filter(Role.name == 'agency').all()
+    
+    return render_template('admin/edit_shopping_slot.html', slot=slot, distributors=distributors, agencies=agencies)
+
+@app.route('/admin/place_slots/edit/<int:slot_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_edit_place_slot(slot_id):
+    """관리자가 플레이스 슬롯 편집"""
+    slot = PlaceSlot.query.get_or_404(slot_id)
+    
+    if request.method == 'POST':
+        try:
+            # 기본 정보 업데이트
+            slot.slot_name = request.form.get('slot_name')
+            slot.status = request.form.get('status')
+            slot.slot_type = request.form.get('slot_type')
+            slot.slot_price = int(request.form.get('slot_price', 0))
+            slot.admin_price = int(request.form.get('admin_price', 0))
+            slot.notes = request.form.get('notes', '')
+            
+            # 날짜 처리
+            if request.form.get('start_date'):
+                slot.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+                
+            if request.form.get('end_date'):
+                slot.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+                
+            if request.form.get('deadline_date'):
+                slot.deadline_date = datetime.strptime(request.form.get('deadline_date'), '%Y-%m-%d').date()
+            
+            # 슬롯 상세 정보 업데이트
+            if request.form.get('place_name'):
+                slot.place_name = request.form.get('place_name')
+                
+            if request.form.get('place_id'):
+                slot.place_id = request.form.get('place_id')
+                
+            if request.form.get('business_category'):
+                slot.business_category = request.form.get('business_category')
+                
+            if request.form.get('business_type'):
+                slot.business_type = request.form.get('business_type')
+                
+            if request.form.get('address'):
+                slot.address = request.form.get('address')
+                
+            if request.form.get('operation_status'):
+                slot.operation_status = request.form.get('operation_status')
+                
+            if request.form.get('status_reason'):
+                slot.status_reason = request.form.get('status_reason')
+                
+            if request.form.get('status_detail'):
+                slot.status_detail = request.form.get('status_detail')
+            
+            db.session.commit()
+            flash('플레이스 슬롯이 성공적으로 업데이트 되었습니다.', 'success')
+            return redirect(url_for('admin_place_slots'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'슬롯 업데이트 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    # 총판 및 대행사 목록
+    distributors = User.query.join(Role).filter(Role.name == 'distributor').all()
+    agencies = User.query.join(Role).filter(Role.name == 'agency').all()
+    
+    return render_template('admin/edit_place_slot.html', slot=slot, distributors=distributors, agencies=agencies)
+
+@app.route('/admin/shopping_slots/delete/<int:slot_id>')
+@admin_required
+def admin_delete_shopping_slot(slot_id):
+    """관리자가 쇼핑 슬롯 삭제"""
+    slot = ShoppingSlot.query.get_or_404(slot_id)
+    slot_name = slot.slot_name
+    
+    try:
+        # 슬롯 관련 승인 요청 삭제
+        SlotApproval.query.filter_by(shopping_slot_id=slot_id).delete()
+        
+        # 슬롯 관련 정산 항목 삭제
+        SettlementItem.query.filter_by(shopping_slot_id=slot_id).delete()
+        
+        # 슬롯 삭제
+        db.session.delete(slot)
+        db.session.commit()
+        
+        flash(f'쇼핑 슬롯 "{slot_name}"이(가) 성공적으로 삭제되었습니다.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'슬롯 삭제 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_shopping_slots'))
+
+@app.route('/admin/place_slots/delete/<int:slot_id>')
+@admin_required
+def admin_delete_place_slot(slot_id):
+    """관리자가 플레이스 슬롯 삭제"""
+    slot = PlaceSlot.query.get_or_404(slot_id)
+    slot_name = slot.slot_name
+    
+    try:
+        # 슬롯 관련 승인 요청 삭제
+        SlotApproval.query.filter_by(place_slot_id=slot_id).delete()
+        
+        # 슬롯 관련 정산 항목 삭제
+        SettlementItem.query.filter_by(place_slot_id=slot_id).delete()
+        
+        # 슬롯 삭제
+        db.session.delete(slot)
+        db.session.commit()
+        
+        flash(f'플레이스 슬롯 "{slot_name}"이(가) 성공적으로 삭제되었습니다.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'슬롯 삭제 중 오류가 발생했습니다: {str(e)}', 'danger')
+    
+    return redirect(url_for('admin_place_slots'))
 
 @app.route('/admin/approve/<int:approval_id>/<action>')
 @admin_required
