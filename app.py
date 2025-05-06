@@ -777,43 +777,48 @@ def distributor_dashboard():
     """총판 대시보드"""
     agencies_count = current_user.agencies.count()
     
-    # 이 총판에 속한 대행사들의 ID 리스트
+    # 이 총판에 속한 대행사들의 ID 리스트 (총판 자신 포함)
     agency_ids = [agency.id for agency in current_user.agencies]
+    user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID도 포함
     
-    # 이 총판에 속한 대행사들의 슬롯 통계
-    shopping_slots = ShoppingSlot.query.filter(ShoppingSlot.user_id.in_(agency_ids)).count() if agency_ids else 0
-    place_slots = PlaceSlot.query.filter(PlaceSlot.user_id.in_(agency_ids)).count() if agency_ids else 0
+    # 이 총판과 소속 대행사들의 슬롯 통계
+    shopping_slots = ShoppingSlot.query.filter(ShoppingSlot.user_id.in_(user_ids)).count() if user_ids else 0
+    place_slots = PlaceSlot.query.filter(PlaceSlot.user_id.in_(user_ids)).count() if user_ids else 0
     
-    # 승인 상태별 슬롯 통계
+    # 총판 자신의 슬롯 통계
+    distributor_shopping_slots = current_user.shopping_slots.count()
+    distributor_place_slots = current_user.place_slots.count()
+    
+    # 승인 상태별 슬롯 통계 (총판+대행사)
     shopping_pending = ShoppingSlot.query.filter(
-        ShoppingSlot.user_id.in_(agency_ids), 
+        ShoppingSlot.user_id.in_(user_ids), 
         ShoppingSlot.status == 'pending'
-    ).count() if agency_ids else 0
+    ).count() if user_ids else 0
     
     shopping_approved = ShoppingSlot.query.filter(
-        ShoppingSlot.user_id.in_(agency_ids), 
+        ShoppingSlot.user_id.in_(user_ids), 
         ShoppingSlot.status == 'approved'
-    ).count() if agency_ids else 0
+    ).count() if user_ids else 0
     
     shopping_rejected = ShoppingSlot.query.filter(
-        ShoppingSlot.user_id.in_(agency_ids), 
+        ShoppingSlot.user_id.in_(user_ids), 
         ShoppingSlot.status == 'rejected'
-    ).count() if agency_ids else 0
+    ).count() if user_ids else 0
     
     place_pending = PlaceSlot.query.filter(
-        PlaceSlot.user_id.in_(agency_ids), 
+        PlaceSlot.user_id.in_(user_ids), 
         PlaceSlot.status == 'pending'
-    ).count() if agency_ids else 0
+    ).count() if user_ids else 0
     
     place_approved = PlaceSlot.query.filter(
-        PlaceSlot.user_id.in_(agency_ids), 
+        PlaceSlot.user_id.in_(user_ids), 
         PlaceSlot.status == 'approved'
-    ).count() if agency_ids else 0
+    ).count() if user_ids else 0
     
     place_rejected = PlaceSlot.query.filter(
-        PlaceSlot.user_id.in_(agency_ids), 
+        PlaceSlot.user_id.in_(user_ids), 
         PlaceSlot.status == 'rejected'
-    ).count() if agency_ids else 0
+    ).count() if user_ids else 0
     
     # 이 총판에게 온 승인 요청
     pending_approvals = SlotApproval.query.filter(
