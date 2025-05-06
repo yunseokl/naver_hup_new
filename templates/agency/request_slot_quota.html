@@ -1,0 +1,190 @@
+{% extends "layout.html" %}
+
+{% block title %}슬롯 수량 요청{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i data-feather="clipboard" class="me-2"></i> 슬롯 수량 요청</h2>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">새 슬롯 수량 요청하기</h5>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info mb-4">
+                <div class="d-flex">
+                    <div class="me-3">
+                        <i data-feather="info" style="width: 24px; height: 24px;"></i>
+                    </div>
+                    <div>
+                        <h5 class="alert-heading">슬롯 수량 요청 안내</h5>
+                        <p class="mb-0">필요한 슬롯 수량을 요청하세요. 수량은 총판의 승인 후 할당됩니다.</p>
+                        <ul class="mt-2 mb-0">
+                            <li>쇼핑/플레이스 슬롯 수량을 각각 요청할 수 있습니다.</li>
+                            <li>요청 수량은 총판의 승인 후 사용 가능합니다.</li>
+                            <li>현재 할당된 수량 내에서만 슬롯을 등록할 수 있습니다.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('request_slot_quota') }}">
+                {{ form.hidden_tag() }}
+                
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i data-feather="shopping-bag" class="me-2"></i>쇼핑 슬롯 현황</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td>현재 할당량:</td>
+                                        <td class="text-end">{{ current_user.quota.shopping_slots_limit }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>사용 중인 슬롯:</td>
+                                        <td class="text-end">{{ current_user.quota.shopping_slots_used }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>남은 슬롯:</td>
+                                        <td class="text-end">{{ current_user.quota.shopping_slots_limit - current_user.quota.shopping_slots_used }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i data-feather="map-pin" class="me-2"></i>플레이스 슬롯 현황</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td>현재 할당량:</td>
+                                        <td class="text-end">{{ current_user.quota.place_slots_limit }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>사용 중인 슬롯:</td>
+                                        <td class="text-end">{{ current_user.quota.place_slots_used }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>남은 슬롯:</td>
+                                        <td class="text-end">{{ current_user.quota.place_slots_limit - current_user.quota.place_slots_used }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>항목</th>
+                            <th>값</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold">쇼핑 슬롯 요청 수량*</td>
+                            <td>
+                                <input type="number" name="shopping_slots_requested" class="form-control" min="1" required>
+                            </td>
+                            <td class="text-muted small">필요한 쇼핑 슬롯의 수량을 입력하세요</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">쇼핑 슬롯 유형</td>
+                            <td>
+                                <select name="shopping_slot_type" class="form-select">
+                                    <option value="standard">일반</option>
+                                    <option value="premium">프리미엄</option>
+                                </select>
+                            </td>
+                            <td class="text-muted small">슬롯 유형에 따라 단가가 달라집니다</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">플레이스 슬롯 요청 수량*</td>
+                            <td>
+                                <input type="number" name="place_slots_requested" class="form-control" min="1" required>
+                            </td>
+                            <td class="text-muted small">필요한 플레이스 슬롯의 수량을 입력하세요</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">플레이스 슬롯 유형</td>
+                            <td>
+                                <select name="place_slot_type" class="form-select">
+                                    <option value="search">검색 유입</option>
+                                    <option value="save">저장</option>
+                                </select>
+                            </td>
+                            <td class="text-muted small">슬롯 유형에 따라 단가가 달라집니다</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">요청 시작일*</td>
+                            <td>
+                                <input type="date" name="start_date" class="form-control" required>
+                            </td>
+                            <td class="text-muted small">슬롯 사용 시작일을 입력하세요</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">요청 종료일*</td>
+                            <td>
+                                <input type="date" name="end_date" class="form-control" required>
+                            </td>
+                            <td class="text-muted small">슬롯 사용 종료일을 입력하세요</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">요청 이유</td>
+                            <td>
+                                <textarea name="request_reason" class="form-control" rows="3"></textarea>
+                            </td>
+                            <td class="text-muted small">요청하는 이유를 자세히 설명해주세요</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{{ url_for('agency_dashboard') }}" class="btn btn-outline-secondary me-2">취소</a>
+                    <button type="submit" class="btn btn-primary">요청 제출</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    
+    form.addEventListener('submit', function(event) {
+        // 시작일과 종료일 비교
+        const startDate = new Date(form.elements['start_date'].value);
+        const endDate = new Date(form.elements['end_date'].value);
+        
+        if (endDate < startDate) {
+            event.preventDefault();
+            alert('종료일은 시작일 이후여야 합니다.');
+            return false;
+        }
+        
+        // 쇼핑 슬롯과 플레이스 슬롯 중 하나는 반드시 1개 이상 입력되어야 함
+        const shoppingSlots = parseInt(form.elements['shopping_slots_requested'].value) || 0;
+        const placeSlots = parseInt(form.elements['place_slots_requested'].value) || 0;
+        
+        if (shoppingSlots <= 0 && placeSlots <= 0) {
+            event.preventDefault();
+            alert('쇼핑 슬롯 또는 플레이스 슬롯 중 하나는 1개 이상 요청해야 합니다.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

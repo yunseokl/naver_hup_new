@@ -1,0 +1,207 @@
+{% extends "layout.html" %}
+
+{% block title %}플레이스 슬롯 등록{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i data-feather="map-pin" class="me-2"></i> 플레이스 슬롯 등록</h2>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">슬롯 정보 등록</h5>
+        </div>
+        <div class="card-body">
+            <form id="placeSlotForm" method="POST" action="{{ url_for('create_place_slot') }}">
+                {{ form.hidden_tag() }}
+                
+                <div class="mb-3">
+                    <div class="alert alert-info">
+                        <div class="d-flex align-items-center">
+                            <i data-feather="info" class="me-2"></i>
+                            <div>
+                                <h5 class="mb-1">슬롯 등록 안내</h5>
+                                <p class="mb-0">아래 정보를 입력하여 플레이스 슬롯을 등록하세요. 등록된 슬롯은 총판의 승인 후 활성화됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <table class="table table-bordered">
+                    <thead class="table-light">
+                        <tr>
+                            <th>항목</th>
+                            <th>값</th>
+                            <th>설명</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="fw-bold">슬롯 이름*</td>
+                            <td>
+                                <input type="text" name="slot_name" class="form-control" required>
+                            </td>
+                            <td class="text-muted small">슬롯을 식별하기 위한 고유 이름을 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">슬롯 유형*</td>
+                            <td>
+                                <select name="slot_type" class="form-select" required>
+                                    <option value="search">검색 유입</option>
+                                    <option value="save">저장</option>
+                                </select>
+                            </td>
+                            <td class="text-muted small">슬롯 유형에 따라 단가가 달라집니다.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">광고주ID</td>
+                            <td>
+                                <input type="text" name="place_id" class="form-control">
+                            </td>
+                            <td class="text-muted small">네이버 플레이스 광고주 ID를 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">업종분류 코드</td>
+                            <td>
+                                <input type="text" name="business_category" class="form-control">
+                            </td>
+                            <td class="text-muted small">업종 분류 코드를 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">업종분류명</td>
+                            <td>
+                                <input type="text" name="business_type" class="form-control">
+                            </td>
+                            <td class="text-muted small">업종 분류 이름을 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">장소명*</td>
+                            <td>
+                                <input type="text" name="place_name" class="form-control" required>
+                            </td>
+                            <td class="text-muted small">광고할 장소의 이름을 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">주소</td>
+                            <td>
+                                <input type="text" name="address" class="form-control">
+                            </td>
+                            <td class="text-muted small">장소의 주소를 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">운영 상태</td>
+                            <td>
+                                <select name="operation_status" class="form-select">
+                                    <option value="심사중">심사중</option>
+                                    <option value="ON">ON</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+                            </td>
+                            <td class="text-muted small">광고 운영 상태를 선택하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">상태 이유</td>
+                            <td>
+                                <input type="text" name="status_reason" class="form-control">
+                            </td>
+                            <td class="text-muted small">운영 상태에 대한 이유를 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">상태 상세</td>
+                            <td>
+                                <input type="text" name="status_detail" class="form-control" placeholder="예: 경쟁입찰(PCMB)">
+                            </td>
+                            <td class="text-muted small">상태에 대한 상세 정보를 입력하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">슬롯 시작일*</td>
+                            <td>
+                                <input type="date" name="start_date" class="form-control" required>
+                            </td>
+                            <td class="text-muted small">슬롯 운영 시작일을 선택하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">슬롯 종료일*</td>
+                            <td>
+                                <input type="date" name="end_date" class="form-control" required>
+                            </td>
+                            <td class="text-muted small">슬롯 운영 종료일을 선택하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">마감일</td>
+                            <td>
+                                <input type="date" name="deadline_date" class="form-control">
+                            </td>
+                            <td class="text-muted small">슬롯 신청 마감일을 선택하세요.</td>
+                        </tr>
+                        <tr>
+                            <td class="fw-bold">메모</td>
+                            <td>
+                                <textarea name="notes" class="form-control" rows="2"></textarea>
+                            </td>
+                            <td class="text-muted small">슬롯에 대한 추가 정보나 메모를 입력하세요.</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{{ url_for('agency_place_slots') }}" class="btn btn-outline-secondary me-2">취소</a>
+                    <button type="submit" class="btn btn-primary">등록 요청</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.getElementById('placeSlotForm');
+    
+    form.addEventListener('submit', function(event) {
+        // 시작일과 종료일 비교
+        const startDate = new Date(form.elements['start_date'].value);
+        const endDate = new Date(form.elements['end_date'].value);
+        
+        if (endDate < startDate) {
+            event.preventDefault();
+            alert('종료일은 시작일 이후여야 합니다.');
+            return false;
+        }
+        
+        // 마감일 확인 (입력된 경우)
+        const deadlineDate = form.elements['deadline_date'].value;
+        if (deadlineDate) {
+            const deadline = new Date(deadlineDate);
+            if (deadline > endDate) {
+                event.preventDefault();
+                alert('마감일은 종료일 이전이어야 합니다.');
+                return false;
+            }
+        }
+        
+        // 기본 필드 검증
+        const requiredFields = form.querySelectorAll('[required]');
+        let valid = true;
+        
+        requiredFields.forEach(field => {
+            if (!field.value.trim()) {
+                field.classList.add('is-invalid');
+                valid = false;
+            } else {
+                field.classList.remove('is-invalid');
+            }
+        });
+        
+        if (!valid) {
+            event.preventDefault();
+            alert('필수 항목을 모두 입력해주세요.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -252,7 +252,44 @@ class SlotQuota(db.Model):
     @property
     def can_use_place_slot(self):
         return self.place_slots_used < self.place_slots_limit
-        
+
+
+# 슬롯 할당량 요청 모델
+class SlotQuotaRequest(db.Model):
+    """슬롯 할당량 요청 모델"""
+    id = db.Column(db.Integer, primary_key=True)
+    requester_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)  # 요청자 (대행사)
+    approver_id = db.Column(db.Integer, db.ForeignKey('user.id'))  # 승인자 (총판 또는 관리자)
+    
+    # 요청 정보
+    shopping_slots_requested = db.Column(db.Integer, default=0)  # 요청한 쇼핑 슬롯 수
+    place_slots_requested = db.Column(db.Integer, default=0)     # 요청한 플레이스 슬롯 수
+    shopping_slot_type = db.Column(db.String(20))  # 쇼핑 슬롯 유형 (standard, premium)
+    place_slot_type = db.Column(db.String(20))     # 플레이스 슬롯 유형 (search, save)
+    
+    # 슬롯 단가 - 승인자가 결정
+    shopping_slot_price = db.Column(db.Integer)  # 쇼핑 슬롯 단가
+    place_slot_price = db.Column(db.Integer)     # 플레이스 슬롯 단가
+    
+    # 기간 정보
+    start_date = db.Column(db.Date)  # 시작일
+    end_date = db.Column(db.Date)    # 종료일
+    
+    # 요청 상태
+    status = db.Column(db.String(20), default='pending')  # pending, approved, rejected
+    request_reason = db.Column(db.Text)  # 요청 이유
+    response_comment = db.Column(db.Text)  # 응답 코멘트
+    
+    # 시간 정보
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+    processed_at = db.Column(db.DateTime)  # 처리 시간
+    
+    # 관계
+    requester = db.relationship('User', foreign_keys=[requester_id], backref='quota_requests')
+    approver = db.relationship('User', foreign_keys=[approver_id], backref='quota_approvals')
+    
+    def __repr__(self):
+        return f'<SlotQuotaRequest {self.id} - 요청자: {self.requester_id}, 상태: {self.status}>'
         
 # 정산 모델
 class Settlement(db.Model):
