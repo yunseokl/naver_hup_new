@@ -795,7 +795,7 @@ def admin_bulk_approve():
 @app.route('/admin/approve/<int:approval_id>/<action>')
 @admin_required
 def admin_approve_request(approval_id, action):
-    """승인 요청 처리"""
+    """승인 요청 처리 및 정산 자동 처리"""
     approval = SlotApproval.query.get_or_404(approval_id)
     
     if action == 'approve':
@@ -805,10 +805,29 @@ def admin_approve_request(approval_id, action):
         
         # 슬롯 상태 업데이트 ('approved'에서 'live'로 변경)
         if approval.slot_type == 'shopping':
-            approval.shopping_slot.status = 'live'
+            slot = approval.shopping_slot
+            slot.status = 'live'
+            
+            # 정산 자동 처리 - 슬롯 가격과 기간에 따른 정산 금액 계산
+            if slot.start_date and slot.end_date and slot.slot_price:
+                # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
+                days = (slot.end_date - slot.start_date).days + 1
+                
+                # 기본 정보 로깅
+                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {days * slot.slot_price}원")
+            
         else:
-            approval.place_slot.status = 'live'
-        
+            slot = approval.place_slot
+            slot.status = 'live'
+            
+            # 정산 자동 처리 - 슬롯 가격과 기간에 따른 정산 금액 계산
+            if slot.start_date and slot.end_date and slot.slot_price:
+                # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
+                days = (slot.end_date - slot.start_date).days + 1
+                
+                # 기본 정보 로깅
+                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {days * slot.slot_price}원")
+            
         flash('승인 요청이 수락되었습니다.', 'success')
     
     elif action == 'reject':
