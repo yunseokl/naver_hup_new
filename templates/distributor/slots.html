@@ -10,20 +10,31 @@
 {% block styles %}
 {{ super() }}
 <style>
+    /* 기본 스타일 */
     body {
         background-color: #1e2230;
         color: white;
     }
+    
+    /* 테이블 스타일 */
     .table {
         color: white;
     }
+    .table td, .table th {
+        vertical-align: middle;
+    }
+    
+    /* 스위치/체크박스 스타일 */
     .form-check-input:checked {
         background-color: var(--bs-success);
         border-color: var(--bs-success);
     }
     .form-switch .form-check-input {
         width: 2.5em;
+        height: 1.25em;
     }
+    
+    /* 탭 스타일 */
     .nav-tabs .nav-link.active {
         background-color: #1e2230;
         color: white;
@@ -31,18 +42,37 @@
     .nav-tabs .nav-link {
         color: #adb5bd;
     }
+    
+    /* 인라인 편집 스타일 */
     .editable-field {
         cursor: pointer;
         position: relative;
+        padding: 4px;
+        border-radius: 4px;
+        transition: all 0.15s ease;
+        border: 1px solid transparent;
+    }
+    .editable-field:hover {
+        background-color: rgba(255, 255, 255, 0.15);
+        border-color: rgba(255, 255, 255, 0.3);
     }
     .editable-field:hover .editable-text {
-        background-color: rgba(255, 255, 255, 0.1);
-        border-radius: 3px;
-        padding: 2px 4px;
+        text-decoration: underline dotted;
     }
     .edit-input {
         width: 100%;
+        padding: 4px 8px;
+        background-color: #2a2f45;
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
     }
+    .edit-input:focus {
+        outline: none;
+        border-color: #3d8bfd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    /* 편집 모드 스타일 */
     .editing .editable-text {
         display: none !important;
     }
@@ -50,14 +80,22 @@
         display: block !important;
     }
     .slot-row.editing {
-        background-color: rgba(13, 110, 253, 0.08); /* 편집 중인 행 배경색 */
+        background-color: rgba(13, 110, 253, 0.08);
     }
-    /* 아이콘 스타일 */
+    
+    /* 버튼 스타일 */
     .save-slot-btn {
         color: #28a745;
     }
     .edit-slot-btn {
         color: #007bff;
+    }
+    
+    /* 테이블 반응성 */
+    @media (max-width: 992px) {
+        .table-responsive {
+            max-height: 70vh;
+        }
     }
 </style>
 {% endblock %}
@@ -608,9 +646,123 @@
 
 {% block scripts %}
 <script>
+    // 인라인 편집 기능 설정
+    function setupInlineEditing() {
+        // 모든 편집 가능한 필드에 이벤트 리스너 추가
+        document.querySelectorAll('.editable-field').forEach(field => {
+            field.addEventListener('click', function(e) {
+                // 부모 행 가져오기
+                const row = this.closest('.slot-row');
+                
+                // 편집 모드로 변경
+                row.classList.add('editing');
+                row.style.backgroundColor = 'rgba(13, 110, 253, 0.08)';
+                
+                // 현재 필드의 텍스트와 입력 요소 찾기
+                const textElement = this.querySelector('.editable-text');
+                const inputElement = this.querySelector('.edit-input');
+                
+                if (textElement && inputElement) {
+                    // 텍스트 숨기고 입력 필드 표시
+                    textElement.style.display = 'none';
+                    inputElement.classList.remove('d-none');
+                    inputElement.focus();
+                    
+                    // 원본 값 저장 (취소 시 복원용)
+                    if (!inputElement.hasAttribute('data-original-value')) {
+                        inputElement.setAttribute('data-original-value', inputElement.value);
+                    }
+                }
+                
+                // 편집/저장 버튼 토글
+                const editBtn = row.querySelector('.edit-slot-btn');
+                const saveBtn = row.querySelector('.save-slot-btn');
+                if (editBtn && saveBtn) {
+                    editBtn.classList.add('d-none');
+                    saveBtn.classList.remove('d-none');
+                }
+                
+                // 이벤트 전파 중지 (다른 이벤트 방지)
+                e.stopPropagation();
+            });
+        });
+    }
+    
+    // 버튼 이벤트 설정
+    function setupButtonEvents() {
+        // 저장 버튼 처리
+        document.querySelectorAll('.save-slot-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const slotId = this.getAttribute('data-slot-id');
+                const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
+                
+                if (row) {
+                    // 슬롯 데이터 수집
+                    const slotData = {
+                        id: slotId,
+                        fields: {}
+                    };
+                    
+                    // 입력 필드 값 수집
+                    row.querySelectorAll('.edit-input').forEach(input => {
+                        slotData.fields[input.name] = input.value;
+                    });
+                    
+                    // 저장 API 호출
+                    saveSlot(slotData);
+                }
+                
+                e.stopPropagation();
+            });
+        });
+        
+        // 편집 버튼 처리
+        document.querySelectorAll('.edit-slot-btn').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                const slotId = this.getAttribute('data-slot-id');
+                const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
+                
+                // 편집 모드 활성화
+                row.classList.add('editing');
+                row.style.backgroundColor = 'rgba(13, 110, 253, 0.08)';
+                
+                // 버튼 전환
+                this.classList.add('d-none');
+                row.querySelector('.save-slot-btn').classList.remove('d-none');
+                
+                // 원본 값 저장
+                row.querySelectorAll('.edit-input').forEach(input => {
+                    input.setAttribute('data-original-value', input.value);
+                });
+                
+                e.stopPropagation();
+            });
+        });
+        
+        // 토글 스위치 처리
+        document.querySelectorAll('.status-toggle').forEach(toggle => {
+            toggle.addEventListener('change', function() {
+                const slotId = this.getAttribute('data-slot-id');
+                const isActive = this.checked;
+                
+                // API 호출로 상태 토글
+                toggleSlotStatus(slotId, isActive);
+            });
+        });
+    }
+    
+    // 페이지가 로드되면 실행
     document.addEventListener('DOMContentLoaded', function() {
         // Feather 아이콘 초기화
-        feather.replace();
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // 인라인 편집 기능
+        setupInlineEditing();
+        
+        // 버튼 이벤트 설정
+        setupButtonEvents();
         
         // 전체 선택 기능
         const selectAllCheckbox = document.getElementById('selectAll');
@@ -726,78 +878,55 @@
             });
         }
         
-        // 개별 슬롯 편집 버튼 클릭 처리
-        document.querySelectorAll('.edit-slot-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const slotId = this.getAttribute('data-slot-id');
-                const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
-                
-                // 편집 모드 활성화
-                row.classList.add('editing');
-                
-                // 버튼 전환
-                this.classList.add('d-none');
-                row.querySelector('.save-slot-btn').classList.remove('d-none');
-                
-                // 현재 값을 원본 값으로 저장
-                row.querySelectorAll('.edit-input').forEach(input => {
-                    input.setAttribute('data-original-value', input.value);
-                });
-            });
+        // 필터 및 검색 버튼 이벤트
+        document.getElementById('searchButton').addEventListener('click', function() {
+            applyFilters();
         });
         
-        // 개별 저장 버튼 클릭 처리
-        document.querySelectorAll('.save-slot-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const slotId = this.getAttribute('data-slot-id');
-                const row = document.querySelector(`.slot-row[data-slot-id="${slotId}"]`);
-                
-                // 슬롯 데이터 수집
-                const slotData = {
-                    id: slotId,
-                    fields: {}
-                };
-                
-                // 입력 필드 값 수집
-                row.querySelectorAll('.edit-input').forEach(input => {
-                    slotData.fields[input.name] = input.value;
-                });
-                
-                // 저장 호출
-                saveSlot(slotData);
-            });
+        document.getElementById('resetButton').addEventListener('click', function() {
+            resetFilters();
+            applyFilters();
         });
         
-        // 슬롯 필드 클릭 시 인라인 편집 활성화
-        document.querySelectorAll('.editable-field').forEach(field => {
-            field.addEventListener('click', function() {
-                const row = this.closest('.slot-row');
-                // 해당 행에 editing 클래스 추가
-                row.classList.add('editing');
+        // 일괄 삭제 버튼 처리
+        document.getElementById('bulkDeleteBtn').addEventListener('click', function() {
+            const checkedBoxes = document.querySelectorAll('.slot-checkbox:checked');
+            
+            if (checkedBoxes.length === 0) {
+                alert('삭제할 슬롯을 선택해주세요.');
+                return;
+            }
+            
+            if (confirm(`선택한 ${checkedBoxes.length}개 슬롯을 삭제하시겠습니까?`)) {
+                // 삭제할 슬롯 아이디 수집
+                const slotIdsToDelete = [];
+                checkedBoxes.forEach(checkbox => {
+                    slotIdsToDelete.push(checkbox.value);
+                });
                 
-                // 현재 필드의 입력창 표시
-                const editInput = this.querySelector('.edit-input');
-                const editableText = this.querySelector('.editable-text');
-                
-                if (editInput && editableText) {
-                    editableText.style.display = 'none';
-                    editInput.classList.remove('d-none');
-                    editInput.focus();
-                    
-                    // 원본 값 저장 (취소 시 복원용)
-                    if (!editInput.hasAttribute('data-original-value')) {
-                        editInput.setAttribute('data-original-value', editInput.value);
+                // 서버로 삭제 요청
+                fetch('/api/bulk-delete-shopping-slots', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ slot_ids: slotIdsToDelete })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`${data.deleted_count}개 슬롯이 삭제되었습니다.`);
+                        // 페이지 새로고침
+                        window.location.reload();
+                    } else {
+                        alert('삭제 실패: ' + (data.message || '알 수 없는 오류'));
                     }
-                }
-                
-                // 편집 버튼 숨기고 저장 버튼 표시
-                const editBtn = row.querySelector('.edit-slot-btn');
-                const saveBtn = row.querySelector('.save-slot-btn');
-                if (editBtn && saveBtn) {
-                    editBtn.classList.add('d-none');
-                    saveBtn.classList.remove('d-none');
-                }
-            });
+                })
+                .catch(error => {
+                    console.error('삭제 오류:', error);
+                    alert('슬롯 삭제 중 오류가 발생했습니다.');
+                });
+            }
         });
         
         // 토글 스위치 처리
