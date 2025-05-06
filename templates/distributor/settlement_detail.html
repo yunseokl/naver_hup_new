@@ -104,7 +104,8 @@
                                     <th>ID</th>
                                     <th>슬롯 이름</th>
                                     <th>슬롯 유형</th>
-                                    <th>기간</th>
+                                    <th>전체 기간</th>
+                                    <th>정산 유효 기간</th>
                                     <th>슬롯 단가</th>
                                     <th>{% if settlement.user_id == current_user.id %}어드민 정산가{% else %}대행사 정산액{% endif %}</th>
                                 </tr>
@@ -138,6 +139,22 @@
                                     <td>
                                         {% if item.slot %}
                                         {{ item.slot.start_date.strftime('%Y-%m-%d') }} ~ {{ item.slot.end_date.strftime('%Y-%m-%d') }}
+                                        {% else %}
+                                        -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if item.slot %}
+                                        {% set start_date = item.slot.start_date %}
+                                        {% set end_date = item.slot.end_date %}
+                                        {% set period_start = settlement.period_start %}
+                                        {% set period_end = settlement.period_end %}
+                                        {% set today = now().date() %}
+                                        
+                                        {% set effective_start = [start_date, period_start]|max %}
+                                        {% set effective_end = [end_date, period_end, today]|min %}
+                                        
+                                        <span class="badge bg-success">{{ effective_start.strftime('%Y-%m-%d') }} ~ {{ effective_end.strftime('%Y-%m-%d') }}</span>
                                         {% else %}
                                         -
                                         {% endif %}
