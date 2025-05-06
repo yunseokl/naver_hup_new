@@ -470,6 +470,9 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Feather 아이콘 초기화
+        feather.replace();
+        
         // 선택 상태 저장 처리
         const checkboxes = document.querySelectorAll('input[name="selected_slots"]');
         checkboxes.forEach(checkbox => {
@@ -500,6 +503,81 @@
                 });
             });
         });
+        
+        // 전체 삭제 확인 체크박스 처리
+        const confirmBulkDeleteCheckbox = document.getElementById('confirmBulkDelete');
+        const bulkDeleteConfirmButton = document.getElementById('bulkDeleteConfirmButton');
+        
+        if (confirmBulkDeleteCheckbox && bulkDeleteConfirmButton) {
+            confirmBulkDeleteCheckbox.addEventListener('change', function() {
+                bulkDeleteConfirmButton.disabled = !this.checked;
+            });
+            
+            // 전체 삭제 버튼 클릭 처리
+            bulkDeleteConfirmButton.addEventListener('click', function() {
+                if (confirmBulkDeleteCheckbox.checked) {
+                    // AJAX 요청으로 전체 삭제 실행
+                    fetch('/bulk-delete-shopping-slots', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 성공 시 페이지 새로고침
+                            alert('모든 쇼핑 슬롯이 삭제되었습니다.');
+                            window.location.reload();
+                        } else {
+                            alert('전체 삭제 실패: ' + (data.message || '알 수 없는 오류'));
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('오류가 발생했습니다.');
+                    });
+                }
+            });
+        }
+        
+        // 일괄 저장 버튼 클릭 처리
+        const bulkSaveButton = document.getElementById('bulkSaveButton');
+        if (bulkSaveButton) {
+            bulkSaveButton.addEventListener('click', function() {
+                // 선택된 모든 슬롯의 ID 수집
+                const checkedSlots = document.querySelectorAll('input[name="selected_slots"]:checked');
+                const slotIds = Array.from(checkedSlots).map(checkbox => checkbox.value);
+                
+                if (slotIds.length === 0) {
+                    alert('저장할 슬롯을 선택해주세요.');
+                    return;
+                }
+                
+                // AJAX 요청으로 일괄 저장 실행
+                fetch('/bulk-save-shopping-slots', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ slot_ids: slotIds })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`${data.count}개의 슬롯이 저장되었습니다.`);
+                        // 성공 시 페이지 새로고침
+                        window.location.reload();
+                    } else {
+                        alert('일괄 저장 실패: ' + (data.message || '알 수 없는 오류'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('오류가 발생했습니다.');
+                });
+            });
+        }
     });
 </script>
 {% endblock %}
