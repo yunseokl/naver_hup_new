@@ -498,11 +498,13 @@ def distributor_slots():
 @app.route('/distributor/slots/create', methods=['POST'])
 @distributor_required
 def create_distributor_slot():
-    """총판의 슬롯 생성"""
+    """총판의 슬롯 할당 (수량, 가격, 기간만 지정)"""
     slot_type = request.form.get('slot_type')
     agency_id = request.form.get('agency_id')
-    slot_name = request.form.get('slot_name')
-    slot_price = request.form.get('slot_price')
+    slot_quantity = int(request.form.get('slot_quantity', 1))
+    slot_price = int(request.form.get('slot_price', 0))
+    slot_sub_type = request.form.get('slot_sub_type')
+    notes = request.form.get('notes', '')
     
     # 대행사 확인
     agency = User.query.get_or_404(agency_id)
@@ -519,57 +521,35 @@ def create_distributor_slot():
         end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
     
     try:
-        if slot_type == 'shopping':
-            # 쇼핑 슬롯 생성
-            product_name = request.form.get('product_name')
-            store_type = request.form.get('store_type')
-            product_id = request.form.get('product_id')
-            keywords = request.form.get('keywords')
-            price = request.form.get('price')
-            sale_price = request.form.get('sale_price')
-            bid_type = request.form.get('bid_type')
-            notes = request.form.get('notes')
+        # 할당된 슬롯 수 만큼 빈 슬롯 생성
+        created_slots = 0
+        for i in range(slot_quantity):
+            slot_name = f"{agency.company_name} {slot_type.capitalize()} 슬롯 {datetime.now().strftime('%Y%m%d')}-{i+1}"
             
-            slot = ShoppingSlot(
-                user_id=agency_id,
-                slot_name=slot_name,
-                store_type=store_type,
-                product_id=product_id,
-                product_name=product_name,
-                keywords=keywords,
-                price=price if price else None,
-                sale_price=sale_price if sale_price else None,
-                start_date=start_date,
-                end_date=end_date,
-                bid_type=bid_type,
-                status='approved',  # 총판이 생성하므로 바로 승인 상태
-                slot_price=slot_price
-            )
-        else:
-            # 플레이스 슬롯 생성
-            place_name = request.form.get('place_name')
-            address = request.form.get('address')
-            business_type = request.form.get('business_type')
-            place_id = request.form.get('place_id')
-            deadline_date = request.form.get('deadline_date')
-            notes = request.form.get('notes')
-            
-            if deadline_date:
-                deadline_date = datetime.strptime(deadline_date, '%Y-%m-%d').date()
-            
-            slot = PlaceSlot(
-                user_id=agency_id,
-                slot_name=slot_name,
-                place_name=place_name,
-                address=address,
-                business_type=business_type,
-                place_id=place_id,
-                start_date=start_date,
-                end_date=end_date,
-                deadline_date=deadline_date,
-                status='approved',  # 총판이 생성하므로 바로 승인 상태
-                slot_price=slot_price
-            )
+            if slot_type == 'shopping':
+                # 쇼핑 슬롯 생성 (빈 슬롯, 대행사가 정보 입력 예정)
+                slot = ShoppingSlot(
+                    user_id=agency_id,
+                    slot_name=slot_name,
+                    start_date=start_date,
+                    end_date=end_date,
+                    status='empty',  # 빈 슬롯으로 생성
+                    slot_price=slot_price,
+                    slot_type=slot_sub_type,  # standard 또는 premium
+                    notes=notes
+                )
+            else:
+                # 플레이스 슬롯 생성 (빈 슬롯, 대행사가 정보 입력 예정)
+                slot = PlaceSlot(
+                    user_id=agency_id,
+                    slot_name=slot_name,
+                    start_date=start_date,
+                    end_date=end_date,
+                    status='empty',  # 빈 슬롯으로 생성
+                    slot_price=slot_price,
+                    slot_type=slot_sub_type,  # search 또는 save
+                    notes=notes
+                )
         
         # 슬롯과 슬롯 정산 정보 저장
         db.session.add(slot)
