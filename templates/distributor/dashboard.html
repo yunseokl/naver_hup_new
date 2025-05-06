@@ -130,11 +130,34 @@
                         </thead>
                         <tbody>
                             {% if pending_approvals > 0 %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-3">
-                                        최근 승인 요청이 있습니다.
-                                    </td>
-                                </tr>
+                                <!-- 여기서 실제 최근 승인 대기 요청 목록을 표시 -->
+                                {% with latest_requests = recent_agency_approvals %}
+                                    {% for approval in latest_requests %}
+                                    <tr>
+                                        <td>
+                                            {{ approval.requester.company_name }}
+                                            {% if approval.requester_id == current_user.id %}
+                                                <span class="badge bg-info">본인</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if approval.shopping_slot_id %}
+                                                <span class="badge bg-success">쇼핑</span>
+                                            {% else %}
+                                                <span class="badge bg-info">플레이스</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if approval.shopping_slot_id %}
+                                                {{ approval.shopping_slot.slot_name }}
+                                            {% else %}
+                                                {{ approval.place_slot.slot_name }}
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ approval.requested_at.strftime('%Y-%m-%d') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endwith %}
                             {% else %}
                                 <tr>
                                     <td colspan="4" class="text-center py-3">

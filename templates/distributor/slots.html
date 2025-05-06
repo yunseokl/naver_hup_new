@@ -55,10 +55,13 @@
                     <div class="col-md-3">
                         <label class="form-label">대행사</label>
                         <select class="form-select bg-dark text-white" name="agency_id" onchange="this.form.submit()">
-                            <option value="" {% if agency_id == '' %}selected{% endif %}>전체 대행사</option>
+                            <option value="" {% if agency_id == '' %}selected{% endif %}>전체</option>
+                            <option value="self" {% if agency_id == 'self' %}selected{% endif %}>총판 직접 슬롯</option>
+                            <optgroup label="대행사">
                             {% for agency in agencies %}
-                            <option value="{{ agency.id }}" {% if agency_id|int == agency.id %}selected{% endif %}>{{ agency.company_name }}</option>
+                            <option value="{{ agency.id }}" {% if agency_id == agency.id|string %}selected{% endif %}>{{ agency.company_name }}</option>
                             {% endfor %}
+                            </optgroup>
                         </select>
                     </div>
                     <div class="col-md-6">

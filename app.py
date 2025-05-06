@@ -820,11 +820,40 @@ def distributor_dashboard():
         PlaceSlot.status == 'rejected'
     ).count() if user_ids else 0
     
-    # 이 총판에게 온 승인 요청
-    pending_approvals = SlotApproval.query.filter(
+    # 이 총판에게 온 승인 요청 (소속 대행사들의 요청) + 자신이 제출한 승인 요청
+    agency_requests = SlotApproval.query.filter(
         SlotApproval.status == 'pending',
         SlotApproval.requester_id.in_(agency_ids)
     ).count() if agency_ids else 0
+    
+    # 총판 자신이 제출한 승인 요청 (관리자에게 보냄)
+    distributor_requests = SlotApproval.query.filter(
+        SlotApproval.status == 'pending',
+        SlotApproval.requester_id == current_user.id
+    ).count()
+    
+    # 총 승인 요청 수
+    pending_approvals = agency_requests + distributor_requests
+    
+    # 최신 승인 요청 5개 가져오기 (대행사 요청 + 본인 요청)
+    # 대행사 요청
+    agency_approval_list = SlotApproval.query.filter(
+        SlotApproval.status == 'pending',
+        SlotApproval.requester_id.in_(agency_ids)
+    ).order_by(SlotApproval.requested_at.desc()).limit(3).all() if agency_ids else []
+    
+    # 본인 요청
+    distributor_approval_list = SlotApproval.query.filter(
+        SlotApproval.status == 'pending',
+        SlotApproval.requester_id == current_user.id
+    ).order_by(SlotApproval.requested_at.desc()).limit(3).all()
+    
+    # 두 목록 합치기
+    recent_agency_approvals = agency_approval_list + distributor_approval_list
+    # 날짜순 정렬
+    recent_agency_approvals.sort(key=lambda x: x.requested_at, reverse=True)
+    # 최대 5개만 표시
+    recent_agency_approvals = recent_agency_approvals[:5]
     
     return render_template('distributor/dashboard.html',
                           agencies_count=agencies_count,
@@ -836,7 +865,10 @@ def distributor_dashboard():
                           shopping_rejected=shopping_rejected,
                           place_pending=place_pending,
                           place_approved=place_approved,
-                          place_rejected=place_rejected)
+                          place_rejected=place_rejected,
+                          recent_agency_approvals=recent_agency_approvals,
+                          distributor_shopping_slots=distributor_shopping_slots,
+                          distributor_place_slots=distributor_place_slots)
 
 @app.route('/distributor/agencies')
 @distributor_required
@@ -859,16 +891,31 @@ def distributor_slots():
     
     # 기본 쿼리 구성
     if slot_type == 'shopping':
-        query = ShoppingSlot.query.join(User).filter(User.parent_id == current_user.id)
+        # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회
+        agency_ids = [agency.id for agency in agencies]
+        user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
+        
+        # 대행사 + 총판 자신의 슬롯 모두 가져오기
+        query = ShoppingSlot.query.filter(ShoppingSlot.user_id.in_(user_ids))
     else:
-        query = PlaceSlot.query.join(User).filter(User.parent_id == current_user.id)
+        # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회
+        agency_ids = [agency.id for agency in agencies]
+        user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
+        
+        # 대행사 + 총판 자신의 슬롯 모두 가져오기
+        query = PlaceSlot.query.filter(PlaceSlot.user_id.in_(user_ids))
     
     # 필터 적용
     if status:
         query = query.filter_by(status=status)
     
     if agency_id:
-        query = query.filter(ShoppingSlot.user_id == agency_id if slot_type == 'shopping' else PlaceSlot.user_id == agency_id)
+        if agency_id == 'self':
+            # 총판 자신의 슬롯만 필터링
+            query = query.filter(ShoppingSlot.user_id == current_user.id if slot_type == 'shopping' else PlaceSlot.user_id == current_user.id)
+        else:
+            # 특정 대행사의 슬롯만 필터링
+            query = query.filter(ShoppingSlot.user_id == agency_id if slot_type == 'shopping' else PlaceSlot.user_id == agency_id)
     
     if search:
         if slot_type == 'shopping':
