@@ -118,11 +118,13 @@
                         <th width="40px">
                             <input type="checkbox" id="selectAll">
                         </th>
-                        <th>슬롯명</th>
+                        <th>번호</th>
                         <th>대행사</th>
-                        <th>스토어타입</th>
-                        <th>키워드</th>
-                        <th>기간</th>
+                        <th>메인키워드</th>
+                        <th>MID</th>
+                        <th>시작일</th>
+                        <th>종료일</th>
+                        <th>초직유형</th>
                         <th>단가</th>
                         <th>상태</th>
                         <th>관리</th>
@@ -135,34 +137,29 @@
                             <td>
                                 <input type="checkbox" class="slot-checkbox" value="{{ slot.id }}">
                             </td>
-                            <td>{{ slot.slot_name }}</td>
+                            <td>{{ loop.index }}</td>
                             <td>{{ slot.user.company_name }}</td>
-                            <td>{{ slot.store_type or 'None' }}</td>
-                            <td>{{ slot.keywords or 'None' }}</td>
-                            <td>
-                                {{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '-' }} - 
-                                {{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '-' }}
-                            </td>
+                            <td>{{ (slot.keywords.split(',')[0] if slot.keywords else '') or 'None' }}</td>
+                            <td>{{ slot.product_id or 'None' }}</td>
+                            <td>{{ slot.start_date.strftime('%Y-%m-%d') if slot.start_date else '-' }}</td>
+                            <td>{{ slot.end_date.strftime('%Y-%m-%d') if slot.end_date else '-' }}</td>
+                            <td>{{ slot.slot_type or '일반' }}</td>
                             <td>{{ slot.slot_price|default(0) }}원</td>
                             <td>
                                 {% if slot.status == 'pending' %}
                                     <span class="badge bg-warning text-dark">승인대기</span>
                                 {% elif slot.status == 'approved' %}
                                     <span class="badge bg-success">승인됨</span>
-                                {% elif slot.status == 'active' %}
+                                {% elif slot.status == 'live' %}
                                     <span class="badge bg-primary">라이브</span>
                                 {% else %}
                                     <span class="badge bg-danger">거절됨</span>
                                 {% endif %}
                             </td>
                             <td>
-                                <div class="btn-group">
-                                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="collapse" data-bs-target="#slotDetails{{ slot.id }}">
-                                        <i class="icon icon-chevron-down"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ slot.id }}">
-                                        <i class="icon icon-trash-2"></i>
-                                    </button>
+                                <div class="form-check form-switch d-flex justify-content-center">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault{{ slot.id }}" 
+                                        {% if slot.status == 'live' %}checked{% endif %}>
                                 </div>
                             </td>
                         </tr>
@@ -591,8 +588,48 @@
         detailView.classList.add('d-none');
     }
 
-    // 일괄 저장 및 전체 삭제 기능
+    // 슬롯 스위치 토글 및 일괄 저장 기능
     document.addEventListener('DOMContentLoaded', function() {
+        // 슬롯 활성화 스위치 토글 처리
+        const slotSwitches = document.querySelectorAll('.form-check-input[type="checkbox"][role="switch"]');
+        slotSwitches.forEach(switchEl => {
+            switchEl.addEventListener('change', function() {
+                const slotId = this.id.replace('flexSwitchCheckDefault', '');
+                const isActive = this.checked;
+                
+                // 활성화/비활성화 AJAX 요청
+                fetch(`/distributor/toggle-slot/${slotId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ active: isActive })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 상태 배지 업데이트
+                        const statusCell = this.closest('tr').querySelector('td:nth-child(10)');
+                        if (isActive) {
+                            statusCell.innerHTML = '<span class="badge bg-primary">라이브</span>';
+                        } else {
+                            statusCell.innerHTML = '<span class="badge bg-secondary">비활성</span>';
+                        }
+                    } else {
+                        alert('상태 변경 중 오류가 발생했습니다: ' + data.message);
+                        // 토글 되돌리기
+                        this.checked = !isActive;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('처리 중 오류가 발생했습니다.');
+                    // 토글 되돌리기
+                    this.checked = !isActive;
+                });
+            });
+        });
+        
         // 일괄 저장 버튼 클릭 시 모달 표시
         const bulkSaveBtn = document.getElementById('bulkSaveBtn');
         if (bulkSaveBtn) {

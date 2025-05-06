@@ -934,6 +934,50 @@ def distributor_agencies():
     agencies = current_user.agencies.all()
     return render_template('distributor/agencies.html', agencies=agencies)
 
+@app.route('/distributor/toggle-slot/<int:slot_id>', methods=['POST'])
+@distributor_required
+def toggle_slot(slot_id):
+    """슬롯 활성화/비활성화 토글"""
+    try:
+        data = request.json
+        active = data.get('active', False)
+        
+        # 슬롯 타입 (쇼핑/플레이스) 확인
+        shopping_slot = ShoppingSlot.query.get(slot_id)
+        if shopping_slot:
+            # 슬롯이 현재 사용자 또는 소속 대행사에 속하는지 확인
+            agencies = current_user.agencies.all()
+            agency_ids = [agency.id for agency in agencies]
+            user_ids = agency_ids + [current_user.id]
+            
+            if shopping_slot.user_id not in user_ids:
+                return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
+                
+            # 상태 변경
+            shopping_slot.status = 'live' if active else 'approved'
+            db.session.commit()
+            return jsonify({'success': True})
+        
+        place_slot = PlaceSlot.query.get(slot_id)
+        if place_slot:
+            # 슬롯이 현재 사용자 또는 소속 대행사에 속하는지 확인
+            agencies = current_user.agencies.all()
+            agency_ids = [agency.id for agency in agencies]
+            user_ids = agency_ids + [current_user.id]
+            
+            if place_slot.user_id not in user_ids:
+                return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
+                
+            # 상태 변경
+            place_slot.status = 'live' if active else 'approved'
+            db.session.commit()
+            return jsonify({'success': True})
+            
+        return jsonify({'success': False, 'message': '슬롯을 찾을 수 없습니다.'}), 404
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
 @app.route('/distributor/slots')
 @distributor_required
 def distributor_slots():
