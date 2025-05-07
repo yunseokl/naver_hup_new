@@ -146,11 +146,11 @@
                                         
                                         <span class="badge bg-success">{{ effective_start.strftime('%Y-%m-%d') }} ~ {{ effective_end.strftime('%Y-%m-%d') }}</span>
                                     </td>
-                                    <td>{{ "{:,}".format(item.slot_price) }}원</td>
-                                    <td>{{ "{:,}".format(item.admin_price if settlement.user_id == current_user.id else item.settlement_price) }}원</td>
+                                    <td>{{ "{:,}".format(item.slot_price or 0) }}원</td>
+                                    <td>{{ "{:,}".format((item.admin_price if settlement.user_id == current_user.id else item.settlement_price) or 0) }}원</td>
                                     <td>
                                         {% if item.is_refund %}
-                                        <span class="badge bg-danger">환불({{ "{:,}".format(item.refund_amount) }}원)</span>
+                                        <span class="badge bg-danger">환불({{ "{:,}".format(item.refund_amount or 0) }}원)</span>
                                         {% else %}
                                         <span class="badge bg-success">정상</span>
                                         {% endif %}
