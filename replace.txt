@@ -1,0 +1,4 @@
+                # 슬롯 가격 × 100유입 × 기간으로 계산
+                daily_visitors = 100  # 일일 100유입
+                total_price = days * daily_visitors * slot.slot_price
+                total_admin_price = 0  # 어드민 정산가 불필요

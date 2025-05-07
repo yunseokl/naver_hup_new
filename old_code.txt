@@ -1,0 +1,4 @@
+                # 슬롯당 100유입 리워드로 고정
+                slot_reward = 100
+                total_price = days * slot_reward
+                total_admin_price = days * (slot.admin_price or 0)
