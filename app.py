@@ -3894,14 +3894,26 @@ def admin_settlement_detail(settlement_id):
     """관리자 정산 상세 페이지"""
     settlement = Settlement.query.get_or_404(settlement_id)
     
-    if settlement.settlement_type == 'shopping':
-        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
-            ShoppingSlot, SettlementItem.shopping_slot_id == ShoppingSlot.id
-        ).all()
-    else:
-        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
-            PlaceSlot, SettlementItem.place_slot_id == PlaceSlot.id
-        ).all()
+    # 정산 항목 조회
+    items = []
+    
+    # 쇼핑 슬롯 정산 항목
+    shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
+    for item in shopping_items:
+        slot = ShoppingSlot.query.get(item.shopping_slot_id)
+        if slot:
+            item.slot = slot
+            item.slot_type = 'shopping'
+            items.append(item)
+    
+    # 플레이스 슬롯 정산 항목
+    place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
+    for item in place_items:
+        slot = PlaceSlot.query.get(item.place_slot_id)
+        if slot:
+            item.slot = slot
+            item.slot_type = 'place'
+            items.append(item)
     
     return render_template('admin/settlement_detail.html',
                           settlement=settlement,
@@ -3994,14 +4006,26 @@ def distributor_settlement_detail(settlement_id):
     if settlement.user_id != current_user.id and settlement.user.parent_id != current_user.id:
         abort(403)
     
-    if settlement.settlement_type == 'shopping':
-        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
-            ShoppingSlot, SettlementItem.shopping_slot_id == ShoppingSlot.id
-        ).all()
-    else:
-        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
-            PlaceSlot, SettlementItem.place_slot_id == PlaceSlot.id
-        ).all()
+    # 정산 항목 조회
+    items = []
+    
+    # 쇼핑 슬롯 정산 항목
+    shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
+    for item in shopping_items:
+        slot = ShoppingSlot.query.get(item.shopping_slot_id)
+        if slot:
+            item.slot = slot
+            item.slot_type = 'shopping'
+            items.append(item)
+    
+    # 플레이스 슬롯 정산 항목
+    place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
+    for item in place_items:
+        slot = PlaceSlot.query.get(item.place_slot_id)
+        if slot:
+            item.slot = slot
+            item.slot_type = 'place'
+            items.append(item)
     
     return render_template('distributor/settlement_detail.html',
                           settlement=settlement,
@@ -4036,14 +4060,26 @@ def agency_settlement_detail(settlement_id):
     if settlement.user_id != current_user.id:
         abort(403)
     
-    if settlement.settlement_type == 'shopping':
-        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
-            ShoppingSlot, SettlementItem.shopping_slot_id == ShoppingSlot.id
-        ).all()
-    else:
-        items = SettlementItem.query.filter_by(settlement_id=settlement_id).join(
-            PlaceSlot, SettlementItem.place_slot_id == PlaceSlot.id
-        ).all()
+    # 정산 항목 조회
+    items = []
+    
+    # 쇼핑 슬롯 정산 항목
+    shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
+    for item in shopping_items:
+        slot = ShoppingSlot.query.get(item.shopping_slot_id)
+        if slot:
+            item.slot = slot
+            item.slot_type = 'shopping'
+            items.append(item)
+    
+    # 플레이스 슬롯 정산 항목
+    place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
+    for item in place_items:
+        slot = PlaceSlot.query.get(item.place_slot_id)
+        if slot:
+            item.slot = slot
+            item.slot_type = 'place'
+            items.append(item)
     
     return render_template('agency/settlement_detail.html',
                           settlement=settlement,
