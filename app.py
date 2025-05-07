@@ -66,6 +66,11 @@ csrf.init_app(app)
 
 # CSRF 보호 제외 경로
 csrf.exempt("admin_settlement_action")
+csrf.exempt("save_slot_api")
+csrf.exempt("save_slots_bulk_api")
+csrf.exempt("toggle_slot_api")
+csrf.exempt("toggle_slot")
+csrf.exempt("export_slots")
 
 # Import models after initializing db to avoid circular imports
 from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval, SlotQuota, SlotQuotaRequest, Settlement, SettlementItem, SlotRefundRequest
@@ -187,7 +192,9 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     
-    if request.method == 'POST':
+    form = FlaskForm()
+    
+    if request.method == 'POST' and form.validate_on_submit():
         username = request.form.get('username')
         password = request.form.get('password')
         
@@ -206,7 +213,7 @@ def login():
         
         flash('아이디 또는 비밀번호가 잘못되었습니다.', 'danger')
     
-    return render_template('auth/login.html')
+    return render_template('auth/login.html', form=form)
 
 @app.route('/logout')
 @login_required
