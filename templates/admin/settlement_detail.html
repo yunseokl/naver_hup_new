@@ -182,12 +182,12 @@
                                         
                                         <span class="badge bg-success">{{ effective_start.strftime('%Y-%m-%d') }} ~ {{ effective_end.strftime('%Y-%m-%d') }}</span>
                                     </td>
-                                    <td>{{ "{:,}".format(item.slot_price or 0) }}원</td>
-                                    <td>{{ "{:,}".format(item.admin_price or 0) }}원</td>
-                                    <td>{{ "{:,}".format(item.settlement_price or 0) }}원</td>
+                                    <td>{% if item.slot_price %}{{ "{:,}".format(item.slot_price) }}{% else %}0{% endif %}원</td>
+                                    <td>{% if item.admin_price %}{{ "{:,}".format(item.admin_price) }}{% else %}0{% endif %}원</td>
+                                    <td>{% if item.settlement_price %}{{ "{:,}".format(item.settlement_price) }}{% else %}0{% endif %}원</td>
                                     <td>
                                         {% if item.is_refund %}
-                                        <span class="badge bg-danger">환불({{ "{:,}".format(item.refund_amount or 0) }}원)</span>
+                                        <span class="badge bg-danger">환불({% if item.refund_amount %}{{ "{:,}".format(item.refund_amount) }}{% else %}0{% endif %}원)</span>
                                         {% else %}
                                         <span class="badge bg-success">정상</span>
                                         {% endif %}
