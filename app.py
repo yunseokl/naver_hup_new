@@ -111,6 +111,16 @@ def format_number_filter(value):
     except (ValueError, TypeError):
         return "0"
 
+@app.template_filter('safe_format')
+def safe_format_filter(value):
+    """안전하게 콤마를 포함한 숫자 포맷팅 (None 값 처리 포함)"""
+    if value is None:
+        return "0"
+    try:
+        return f"{int(value):,}"
+    except (ValueError, TypeError):
+        return "0"
+
 @app.template_filter('nl2br')
 def nl2br_filter(text):
     """텍스트의 줄바꿈을 HTML <br> 태그로 변환"""
