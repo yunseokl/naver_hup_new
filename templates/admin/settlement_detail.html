@@ -79,27 +79,11 @@
                     <hr>
                     
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6 mx-auto">
                             <div class="card border-primary mb-3">
                                 <div class="card-header bg-primary text-white">총 정산 금액</div>
                                 <div class="card-body">
                                     <h5 class="card-title">{{ "{:,}".format(settlement.total_price) }}원</h5>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card border-info mb-3">
-                                <div class="card-header bg-info text-white">어드민 정산가</div>
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ "{:,}".format(settlement.admin_price) }}원</h5>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card border-success mb-3">
-                                <div class="card-header bg-success text-white">대행사 정산가</div>
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ "{:,}".format(settlement.agency_price) }}원</h5>
                                 </div>
                             </div>
                         </div>
@@ -142,8 +126,7 @@
                                     <th>전체 기간</th>
                                     <th>정산 유효 기간</th>
                                     <th>슬롯 단가</th>
-                                    <th>어드민 정산가</th>
-                                    <th>실제 정산액</th>
+                                    <th>정산액</th>
                                     <th>타입</th>
                                 </tr>
                             </thead>
@@ -183,7 +166,6 @@
                                         <span class="badge bg-success">{{ effective_start.strftime('%Y-%m-%d') }} ~ {{ effective_end.strftime('%Y-%m-%d') }}</span>
                                     </td>
                                     <td>{{ item.slot_price|safe_format }}원</td>
-                                    <td>{{ item.admin_price|safe_format }}원</td>
                                     <td>{{ item.settlement_price|safe_format }}원</td>
                                     <td>
                                         {% if item.is_refund %}

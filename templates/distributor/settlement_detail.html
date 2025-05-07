@@ -107,7 +107,7 @@
                                     <th>전체 기간</th>
                                     <th>정산 유효 기간</th>
                                     <th>슬롯 단가</th>
-                                    <th>{% if settlement.user_id == current_user.id %}어드민 정산가{% else %}대행사 정산액{% endif %}</th>
+                                    <th>정산액</th>
                                     <th>타입</th>
                                 </tr>
                             </thead>
@@ -147,11 +147,7 @@
                                         <span class="badge bg-success">{{ effective_start.strftime('%Y-%m-%d') }} ~ {{ effective_end.strftime('%Y-%m-%d') }}</span>
                                     </td>
                                     <td>{{ item.slot_price|safe_format }}원</td>
-                                    <td>{% if settlement.user_id == current_user.id %}
-                                        {{ item.admin_price|safe_format }}
-                                    {% else %}
-                                        {{ item.settlement_price|safe_format }}
-                                    {% endif %}원</td>
+                                    <td>{{ item.settlement_price|safe_format }}원</td>
                                     <td>
                                         {% if item.is_refund %}
                                         <span class="badge bg-danger">환불({{ item.refund_amount|safe_format }}원)</span>
