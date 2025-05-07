@@ -118,6 +118,13 @@ def nl2br_filter(text):
         return text.replace('\n', '<br>')
     return ""
 
+# now 함수를 템플릿에서 사용할 수 있도록 등록
+@app.context_processor
+def utility_processor():
+    def now():
+        return datetime.now()
+    return dict(now=now)
+
 # app 초기화 후 바로 실행합니다
 create_tables_and_defaults()
 
