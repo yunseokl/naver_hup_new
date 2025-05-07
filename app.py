@@ -840,6 +840,9 @@ def admin_approve_request(approval_id, action):
                     next_month = today.replace(month=today.month + 1, day=1)
                 month_end = next_month - timedelta(days=1)
                 
+                # 슬롯 정산 상태 먼저 업데이트
+                slot.settlement_status = 'in_progress'
+                
                 # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
                 existing_settlement = Settlement.query.filter(
                     Settlement.user_id == slot.user_id,
@@ -865,8 +868,8 @@ def admin_approve_request(approval_id, action):
                     existing_settlement.admin_price += total_admin_price
                     existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
                 else:
@@ -896,8 +899,8 @@ def admin_approve_request(approval_id, action):
                     )
                     db.session.add(settlement_item)
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
             
@@ -926,6 +929,9 @@ def admin_approve_request(approval_id, action):
                     next_month = today.replace(month=today.month + 1, day=1)
                 month_end = next_month - timedelta(days=1)
                 
+                # 슬롯 정산 상태 먼저 업데이트
+                slot.settlement_status = 'in_progress'
+                
                 # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
                 existing_settlement = Settlement.query.filter(
                     Settlement.user_id == slot.user_id,
@@ -951,8 +957,8 @@ def admin_approve_request(approval_id, action):
                     existing_settlement.admin_price += total_admin_price
                     existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
                 else:
@@ -982,8 +988,8 @@ def admin_approve_request(approval_id, action):
                     )
                     db.session.add(settlement_item)
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
             
@@ -1002,7 +1008,10 @@ def admin_approve_request(approval_id, action):
         
         flash('승인 요청이 거절되었습니다.', 'success')
     
+    # 모든 변경사항 커밋
     db.session.commit()
+    
+    app.logger.info(f"슬롯 승인/거절 처리 완료: approval_id={approval_id}, action={action}")
     return redirect(url_for('admin_approvals'))
 
 # 총판 라우트
@@ -1808,6 +1817,9 @@ def distributor_approve_request(approval_id, action):
                     next_month = today.replace(month=today.month + 1, day=1)
                 month_end = next_month - timedelta(days=1)
                 
+                # 슬롯 정산 상태 먼저 업데이트
+                slot.settlement_status = 'in_progress'
+                
                 # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
                 existing_settlement = Settlement.query.filter(
                     Settlement.user_id == slot.user_id,
@@ -1833,8 +1845,8 @@ def distributor_approve_request(approval_id, action):
                     existing_settlement.admin_price += total_admin_price
                     existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
                 else:
@@ -1864,8 +1876,8 @@ def distributor_approve_request(approval_id, action):
                     )
                     db.session.add(settlement_item)
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
             
@@ -1894,6 +1906,9 @@ def distributor_approve_request(approval_id, action):
                     next_month = today.replace(month=today.month + 1, day=1)
                 month_end = next_month - timedelta(days=1)
                 
+                # 슬롯 정산 상태 먼저 업데이트
+                slot.settlement_status = 'in_progress'
+                
                 # 기존 정산이 있는지 확인 (사용자, 정산 타입, 기간)
                 existing_settlement = Settlement.query.filter(
                     Settlement.user_id == slot.user_id,
@@ -1919,8 +1934,8 @@ def distributor_approve_request(approval_id, action):
                     existing_settlement.admin_price += total_admin_price
                     existing_settlement.agency_price = existing_settlement.total_price - existing_settlement.admin_price
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"기존 정산 #{existing_settlement.id}에 슬롯 #{slot.id} 추가됨")
                 else:
@@ -1950,8 +1965,8 @@ def distributor_approve_request(approval_id, action):
                     )
                     db.session.add(settlement_item)
                     
-                    # 슬롯 정산 상태 업데이트
-                    slot.settlement_status = 'in_progress'
+                    # 변경사항 저장
+                    db.session.flush()
                     
                     app.logger.info(f"새 정산 #{new_settlement.id} 생성됨 (슬롯 #{slot.id})")
             
