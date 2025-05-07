@@ -152,22 +152,16 @@
                                 {% for item in items %}
                                 <tr>
                                     <td>{{ loop.index }}</td>
-                                    <td>
-                                        {% if item.slot %}
-                                        {{ item.slot.slot_name }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
-                                    </td>
+                                    <td>{{ item.slot_name }}</td>
                                     <td>
                                         {% if item.slot_type == 'shopping' %}
-                                            {% if item.slot.slot_type == 'standard' %}
+                                            {% if item.slot_subtype == 'standard' %}
                                             <span class="badge bg-info">쇼핑 (일반)</span>
                                             {% else %}
                                             <span class="badge bg-primary">쇼핑 (프리미엄)</span>
                                             {% endif %}
                                         {% else %}
-                                            {% if item.slot.slot_type == 'search' %}
+                                            {% if item.slot_subtype == 'search' %}
                                             <span class="badge bg-success">플레이스 (검색유입)</span>
                                             {% else %}
                                             <span class="badge bg-secondary">플레이스 (저장)</span>
@@ -175,16 +169,11 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        {% if item.slot %}
-                                        {{ item.slot.start_date.strftime('%Y-%m-%d') }} ~ {{ item.slot.end_date.strftime('%Y-%m-%d') }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
+                                        {{ item.start_date.strftime('%Y-%m-%d') }} ~ {{ item.end_date.strftime('%Y-%m-%d') }}
                                     </td>
                                     <td>
-                                        {% if item.slot %}
-                                        {% set start_date = item.slot.start_date %}
-                                        {% set end_date = item.slot.end_date %}
+                                        {% set start_date = item.start_date %}
+                                        {% set end_date = item.end_date %}
                                         {% set period_start = settlement.period_start %}
                                         {% set period_end = settlement.period_end %}
                                         {% set today = now().date() %}
@@ -193,9 +182,6 @@
                                         {% set effective_end = [end_date, period_end, today]|min %}
                                         
                                         <span class="badge bg-success">{{ effective_start.strftime('%Y-%m-%d') }} ~ {{ effective_end.strftime('%Y-%m-%d') }}</span>
-                                        {% else %}
-                                        -
-                                        {% endif %}
                                     </td>
                                     <td>{{ "{:,}".format(item.slot_price) }}원</td>
                                     <td>{{ "{:,}".format(item.admin_price) }}원</td>

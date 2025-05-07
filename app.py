@@ -3894,30 +3894,58 @@ def admin_settlement_detail(settlement_id):
     """관리자 정산 상세 페이지"""
     settlement = Settlement.query.get_or_404(settlement_id)
     
-    # 정산 항목 조회
-    items = []
+    # 정산 항목 조회 (처리된 데이터 준비)
+    processed_items = []
     
     # 쇼핑 슬롯 정산 항목
     shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
     for item in shopping_items:
         slot = ShoppingSlot.query.get(item.shopping_slot_id)
         if slot:
-            item.slot = slot
-            item.slot_type = 'shopping'
-            items.append(item)
+            # 데이터를 딕셔너리로 구성
+            processed_item = {
+                'id': item.id,
+                'settlement_id': item.settlement_id,
+                'slot_id': item.shopping_slot_id,
+                'slot_name': slot.slot_name,
+                'slot_type': 'shopping',
+                'slot_subtype': slot.slot_type,
+                'start_date': slot.start_date,
+                'end_date': slot.end_date,
+                'slot_price': item.slot_price,
+                'admin_price': item.admin_price,
+                'settlement_price': item.settlement_price,
+                'is_refund': getattr(item, 'is_refund', False),
+                'refund_amount': getattr(item, 'refund_amount', 0)
+            }
+            processed_items.append(processed_item)
     
     # 플레이스 슬롯 정산 항목
     place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
     for item in place_items:
         slot = PlaceSlot.query.get(item.place_slot_id)
         if slot:
-            item.slot = slot
-            item.slot_type = 'place'
-            items.append(item)
+            # 데이터를 딕셔너리로 구성
+            processed_item = {
+                'id': item.id,
+                'settlement_id': item.settlement_id,
+                'slot_id': item.place_slot_id,
+                'slot_name': slot.slot_name,
+                'slot_type': 'place',
+                'slot_subtype': slot.slot_type,
+                'start_date': slot.start_date,
+                'end_date': slot.end_date,
+                'slot_price': item.slot_price,
+                'admin_price': item.admin_price,
+                'settlement_price': item.settlement_price,
+                'is_refund': getattr(item, 'is_refund', False),
+                'refund_amount': getattr(item, 'refund_amount', 0)
+            }
+            processed_items.append(processed_item)
     
     return render_template('admin/settlement_detail.html',
                           settlement=settlement,
-                          items=items)
+                          items=processed_items)
 
 
 @app.route('/admin/settlement/<int:settlement_id>/action', methods=['POST'])
@@ -4006,30 +4034,58 @@ def distributor_settlement_detail(settlement_id):
     if settlement.user_id != current_user.id and settlement.user.parent_id != current_user.id:
         abort(403)
     
-    # 정산 항목 조회
-    items = []
+    # 정산 항목 조회 (처리된 데이터 준비)
+    processed_items = []
     
     # 쇼핑 슬롯 정산 항목
     shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
     for item in shopping_items:
         slot = ShoppingSlot.query.get(item.shopping_slot_id)
         if slot:
-            item.slot = slot
-            item.slot_type = 'shopping'
-            items.append(item)
+            # 데이터를 딕셔너리로 구성
+            processed_item = {
+                'id': item.id,
+                'settlement_id': item.settlement_id,
+                'slot_id': item.shopping_slot_id,
+                'slot_name': slot.slot_name,
+                'slot_type': 'shopping',
+                'slot_subtype': slot.slot_type,
+                'start_date': slot.start_date,
+                'end_date': slot.end_date,
+                'slot_price': item.slot_price,
+                'admin_price': item.admin_price,
+                'settlement_price': item.settlement_price,
+                'is_refund': getattr(item, 'is_refund', False),
+                'refund_amount': getattr(item, 'refund_amount', 0)
+            }
+            processed_items.append(processed_item)
     
     # 플레이스 슬롯 정산 항목
     place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
     for item in place_items:
         slot = PlaceSlot.query.get(item.place_slot_id)
         if slot:
-            item.slot = slot
-            item.slot_type = 'place'
-            items.append(item)
+            # 데이터를 딕셔너리로 구성
+            processed_item = {
+                'id': item.id,
+                'settlement_id': item.settlement_id,
+                'slot_id': item.place_slot_id,
+                'slot_name': slot.slot_name,
+                'slot_type': 'place',
+                'slot_subtype': slot.slot_type,
+                'start_date': slot.start_date,
+                'end_date': slot.end_date,
+                'slot_price': item.slot_price,
+                'admin_price': item.admin_price,
+                'settlement_price': item.settlement_price,
+                'is_refund': getattr(item, 'is_refund', False),
+                'refund_amount': getattr(item, 'refund_amount', 0)
+            }
+            processed_items.append(processed_item)
     
     return render_template('distributor/settlement_detail.html',
                           settlement=settlement,
-                          items=items)
+                          items=processed_items)
 
 
 @app.route('/agency/settlements')
@@ -4060,30 +4116,58 @@ def agency_settlement_detail(settlement_id):
     if settlement.user_id != current_user.id:
         abort(403)
     
-    # 정산 항목 조회
-    items = []
+    # 정산 항목 조회 (처리된 데이터 준비)
+    processed_items = []
     
     # 쇼핑 슬롯 정산 항목
     shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
     for item in shopping_items:
         slot = ShoppingSlot.query.get(item.shopping_slot_id)
         if slot:
-            item.slot = slot
-            item.slot_type = 'shopping'
-            items.append(item)
+            # 데이터를 딕셔너리로 구성
+            processed_item = {
+                'id': item.id,
+                'settlement_id': item.settlement_id,
+                'slot_id': item.shopping_slot_id,
+                'slot_name': slot.slot_name,
+                'slot_type': 'shopping',
+                'slot_subtype': slot.slot_type,
+                'start_date': slot.start_date,
+                'end_date': slot.end_date,
+                'slot_price': item.slot_price,
+                'admin_price': item.admin_price,
+                'settlement_price': item.settlement_price,
+                'is_refund': getattr(item, 'is_refund', False),
+                'refund_amount': getattr(item, 'refund_amount', 0)
+            }
+            processed_items.append(processed_item)
     
     # 플레이스 슬롯 정산 항목
     place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
     for item in place_items:
         slot = PlaceSlot.query.get(item.place_slot_id)
         if slot:
-            item.slot = slot
-            item.slot_type = 'place'
-            items.append(item)
+            # 데이터를 딕셔너리로 구성
+            processed_item = {
+                'id': item.id,
+                'settlement_id': item.settlement_id,
+                'slot_id': item.place_slot_id,
+                'slot_name': slot.slot_name,
+                'slot_type': 'place',
+                'slot_subtype': slot.slot_type,
+                'start_date': slot.start_date,
+                'end_date': slot.end_date,
+                'slot_price': item.slot_price,
+                'admin_price': item.admin_price,
+                'settlement_price': item.settlement_price,
+                'is_refund': getattr(item, 'is_refund', False),
+                'refund_amount': getattr(item, 'refund_amount', 0)
+            }
+            processed_items.append(processed_item)
     
     return render_template('agency/settlement_detail.html',
                           settlement=settlement,
-                          items=items)
+                          items=processed_items)
 
 
 @app.route('/bulk-save-shopping-slots', methods=['POST'])
