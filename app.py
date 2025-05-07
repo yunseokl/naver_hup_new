@@ -850,18 +850,19 @@ def admin_approve_request(approval_id, action):
             slot = approval.shopping_slot
             slot.status = 'live'
             
-            # 정산 자동 처리 - 슬롯당 100유입 리워드로 고정
+            # 정산 자동 처리 - 슬롯 가격 × 100유입 × 기간
             if slot.start_date and slot.end_date:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
                 days = (slot.end_date - slot.start_date).days + 1
                 
-                # 슬롯당 100유입 리워드로 고정
-                slot_reward = 100
-                total_price = days * slot_reward
-                total_admin_price = days * (slot.admin_price or 0)
+                # 슬롯 가격 × 100유입 × 기간으로 계산
+                daily_visitors = 100  # 일일 100유입
+                price_per_unit = slot.slot_price  # 단가 
+                total_price = days * daily_visitors * price_per_unit
+                total_admin_price = 0  # 어드민 정산가 불필요
                 
                 # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
+                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
                 
                 # 정산 자동 생성
                 today = datetime.now().date()
@@ -942,13 +943,14 @@ def admin_approve_request(approval_id, action):
             if slot.start_date and slot.end_date:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
                 days = (slot.end_date - slot.start_date).days + 1
-                
-                # 슬롯당 100유입 리워드로 고정
-                slot_reward = 100
-                total_price = days * slot_reward
-                total_admin_price = days * (slot.admin_price or 0)
+                # 슬롯 가격 × 100유입 × 기간으로 계산
+                daily_visitors = 100  # 일일 100유입
+                price_per_unit = slot.slot_price  # 단가 
+                total_price = days * daily_visitors * price_per_unit
+                total_admin_price = 0  # 어드민 정산가 불필요
                 
                 # 기본 정보 로깅
+                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
                 app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
                 
                 # 정산 자동 생성
@@ -1828,13 +1830,14 @@ def distributor_approve_request(approval_id, action):
             # 정산 자동 처리 - 슬롯당 100유입 리워드로 고정
             if slot.start_date and slot.end_date:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
-                days = (slot.end_date - slot.start_date).days + 1
+                # 슬롯 가격 × 100유입 × 기간으로 계산
+                daily_visitors = 100  # 일일 100유입
+                price_per_unit = slot.slot_price  # 단가 
+                total_price = days * daily_visitors * price_per_unit
+                total_admin_price = 0  # 어드민 정산가 불필요
                 
-                # 슬롯당 100유입 리워드로 고정
-                slot_reward = 100
-                total_price = days * slot_reward
-                total_admin_price = days * (slot.admin_price or 0)
-                
+                # 기본 정보 로깅
+                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
                 # 기본 정보 로깅
                 app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
                 
@@ -1915,13 +1918,14 @@ def distributor_approve_request(approval_id, action):
             
             # 정산 자동 처리 - 슬롯당 100유입 리워드로 고정
             if slot.start_date and slot.end_date:
-                # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
-                days = (slot.end_date - slot.start_date).days + 1
+                # 슬롯 가격 × 100유입 × 기간으로 계산
+                daily_visitors = 100  # 일일 100유입
+                price_per_unit = slot.slot_price  # 단가 
+                total_price = days * daily_visitors * price_per_unit
+                total_admin_price = 0  # 어드민 정산가 불필요
                 
-                # 슬롯당 100유입 리워드로 고정
-                slot_reward = 100
-                total_price = days * slot_reward
-                total_admin_price = days * (slot.admin_price or 0)
+                # 기본 정보 로깅
+                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
                 
                 # 기본 정보 로깅
                 app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
