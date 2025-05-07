@@ -1971,8 +1971,8 @@ def distributor_approve_request(approval_id, action):
                         user_id=slot.user_id,
                         admin_id=None,  # 총판 승인일 경우 admin_id는 None
                         settlement_type='place',
-                        period_start=month_start,
-                        period_end=month_end,
+                        period_start=day_start,
+                        period_end=day_end,
                         status='pending',
                         total_price=total_price,
                         admin_price=total_admin_price,
@@ -1986,7 +1986,7 @@ def distributor_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=new_settlement.id,
                         place_slot_id=slot.id,
-                        slot_price=slot.slot_price,
+                        slot_price=slot_reward,  # 100유입 리워드로 고정
                         admin_price=slot.admin_price,
                         settlement_price=total_price
                     )
