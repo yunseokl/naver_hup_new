@@ -27,6 +27,7 @@ class User(UserMixin, db.Model):
     company_name = db.Column(db.String(100))  # 회사명
     phone = db.Column(db.String(20))  # 연락처
     is_active = db.Column(db.Boolean, default=True)
+    approved = db.Column(db.Boolean, default=False)  # 관리자 승인 여부
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     
@@ -84,6 +85,7 @@ class ShoppingSlot(db.Model):
     product_id = db.Column(db.String(100))  # 광고품ID
     shopping_campaign_id = db.Column(db.String(100))  # 쇼핑캠페인ID
     slot_type = db.Column(db.String(50), default='standard')  # 슬롯 유형 (standard: 일반, premium: 프리미엄)
+    period = db.Column(db.String(50))  # 기간
     
     # 제품 관련 정보
     product_name = db.Column(db.String(200))  # 상품명
