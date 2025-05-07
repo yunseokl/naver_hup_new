@@ -109,14 +109,12 @@
                     <div class="d-flex justify-content-end mt-3">
                         <div class="btn-group">
                             <form method="POST" action="{{ url_for('admin_settlement_action', settlement_id=settlement.id) }}" class="me-2">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="action" value="complete">
                                 <button type="submit" class="btn btn-success" onclick="return confirm('정말 정산을 완료 처리하시겠습니까?')">
                                     <i class="feather-check"></i> 정산 완료
                                 </button>
                             </form>
                             <form method="POST" action="{{ url_for('admin_settlement_action', settlement_id=settlement.id) }}">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="action" value="cancel">
                                 <button type="submit" class="btn btn-danger" onclick="return confirm('정말 정산을 취소하시겠습니까?')">
                                     <i class="feather-x"></i> 정산 취소

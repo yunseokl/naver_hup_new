@@ -14,7 +14,7 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import or_
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from functools import wraps
-from flask_wtf import FlaskForm
+from flask_wtf import FlaskForm, CSRFProtect
 import locale
 
 # 숫자 포맷팅을 위한 설정
@@ -59,6 +59,13 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = '이 페이지에 접근하려면 로그인이 필요합니다.'
 login_manager.login_message_category = 'warning'
+
+# Initialize CSRF Protection
+csrf = CSRFProtect()
+csrf.init_app(app)
+
+# CSRF 보호 제외 경로
+csrf.exempt("admin_settlement_action")
 
 # Import models after initializing db to avoid circular imports
 from models import User, Role, ShoppingSlot, PlaceSlot, SlotApproval, SlotQuota, SlotQuotaRequest, Settlement, SettlementItem, SlotRefundRequest
