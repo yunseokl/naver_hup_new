@@ -429,6 +429,108 @@ def admin_approvals():
                           approvals=approvals,
                           pending_count=pending_count,
                           status_filter=status_filter)
+                          
+@app.route('/admin/settlements')
+@login_required
+@admin_required
+def admin_settlements():
+    """관리자용 정산 관리 페이지"""
+    # 전체 정산 목록 조회
+    settlements = Settlement.query.order_by(Settlement.created_at.desc()).all()
+    
+    # 필터링 옵션 적용
+    period = request.args.get('period', 'all')
+    status = request.args.get('status', 'all')
+    
+    if period != 'all':
+        today = date.today()
+        if period == 'this_month':
+            start_date = date(today.year, today.month, 1)
+            settlements = [s for s in settlements if s.created_at.date() >= start_date]
+        elif period == 'last_month':
+            last_month = today.month - 1 if today.month > 1 else 12
+            last_month_year = today.year if today.month > 1 else today.year - 1
+            start_date = date(last_month_year, last_month, 1)
+            end_date = date(today.year, today.month, 1) - timedelta(days=1)
+            settlements = [s for s in settlements if start_date <= s.created_at.date() <= end_date]
+        elif period == 'last_3months':
+            three_months_ago = today - timedelta(days=90)
+            settlements = [s for s in settlements if s.created_at.date() >= three_months_ago]
+    
+    if status != 'all':
+        settlements = [s for s in settlements if s.status == status]
+    
+    return render_template('admin/settlements.html',
+                          settlements=settlements,
+                          period=period,
+                          status=status)
+
+@app.route('/admin/settlement/<int:settlement_id>')
+@login_required
+@admin_required
+def admin_settlement_detail(settlement_id):
+    """관리자용 정산 상세 페이지"""
+    settlement = Settlement.query.get_or_404(settlement_id)
+    
+    # 정산 항목 가져오기
+    items = SettlementItem.query.filter_by(settlement_id=settlement_id).all()
+    
+    return render_template('admin/settlement_detail.html',
+                          settlement=settlement,
+                          items=items)
+                          
+@app.route('/admin/settlement/<int:settlement_id>/complete', methods=['POST'])
+@login_required
+@admin_required
+def admin_complete_settlement(settlement_id):
+    """관리자용 정산 완료 처리"""
+    settlement = Settlement.query.get_or_404(settlement_id)
+    
+    if settlement.status == 'pending':
+        settlement.status = 'completed'
+        settlement.completed_at = datetime.now()
+        settlement.admin_id = current_user.id
+        
+        # 관련 슬롯들의 정산 상태도 업데이트
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).all()
+        for item in items:
+            if item.shopping_slot_id:
+                item.shopping_slot.settlement_status = 'completed'
+            elif item.place_slot_id:
+                item.place_slot.settlement_status = 'completed'
+        
+        db.session.commit()
+        flash('정산이 완료되었습니다.', 'success')
+    else:
+        flash('이미 처리된 정산입니다.', 'warning')
+    
+    return redirect(url_for('admin_settlement_detail', settlement_id=settlement_id))
+
+@app.route('/admin/settlement/<int:settlement_id>/cancel', methods=['POST'])
+@login_required
+@admin_required
+def admin_cancel_settlement(settlement_id):
+    """관리자용 정산 취소 처리"""
+    settlement = Settlement.query.get_or_404(settlement_id)
+    
+    if settlement.status == 'pending':
+        settlement.status = 'cancelled'
+        settlement.admin_id = current_user.id
+        
+        # 관련 슬롯들의 정산 상태도 업데이트
+        items = SettlementItem.query.filter_by(settlement_id=settlement_id).all()
+        for item in items:
+            if item.shopping_slot_id:
+                item.shopping_slot.settlement_status = 'pending'
+            elif item.place_slot_id:
+                item.place_slot.settlement_status = 'pending'
+        
+        db.session.commit()
+        flash('정산이 취소되었습니다.', 'success')
+    else:
+        flash('이미 처리된 정산입니다.', 'warning')
+    
+    return redirect(url_for('admin_settlement_detail', settlement_id=settlement_id))
 
 @app.route('/admin/shopping-slots')
 @login_required

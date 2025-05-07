@@ -1,198 +1,253 @@
 {% extends "layout.html" %}
 
-{% block title %}정산 상세{% endblock %}
+{% block title %}정산 상세 - 네이버 광고 슬롯 관리 시스템{% endblock %}
 
 {% block content %}
-<div class="container py-4">
-    <div class="row">
-        <div class="col-md-12">
-            <h2 class="mb-4">정산 상세 정보</h2>
-            
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">정산 기본 정보</h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th width="130">정산 ID</th>
-                                    <td>{{ settlement.id }}</td>
-                                </tr>
-                                <tr>
-                                    <th>정산 대상</th>
-                                    <td>{{ settlement.user.company_name }} ({{ settlement.user.username }})</td>
-                                </tr>
-                                <tr>
-                                    <th>정산 유형</th>
-                                    <td>
-                                        {% if settlement.settlement_type == 'shopping' %}
-                                        <span class="badge bg-info">쇼핑 슬롯</span>
-                                        {% else %}
-                                        <span class="badge bg-success">플레이스 슬롯</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>정산 상태</th>
-                                    <td>
-                                        {% if settlement.status == 'pending' %}
-                                        <span class="badge bg-warning">대기중</span>
-                                        {% elif settlement.status == 'completed' %}
-                                        <span class="badge bg-success">완료</span>
-                                        {% elif settlement.status == 'cancelled' %}
-                                        <span class="badge bg-danger">취소</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tr>
-                                    <th width="130">정산 기간</th>
-                                    <td>{{ settlement.period_start.strftime('%Y-%m-%d') }} ~ {{ settlement.period_end.strftime('%Y-%m-%d') }}</td>
-                                </tr>
-                                <tr>
-                                    <th>생성일</th>
-                                    <td>{{ settlement.created_at.strftime('%Y-%m-%d') }}</td>
-                                </tr>
-                                <tr>
-                                    <th>완료일</th>
-                                    <td>
-                                        {% if settlement.completed_at %}
-                                        {{ settlement.completed_at.strftime('%Y-%m-%d') }}
-                                        {% else %}
-                                        -
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th>메모</th>
-                                    <td>{{ settlement.notes or '-' }}</td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                    
-                    <hr>
-                    
-                    <div class="row">
-                        <div class="col-md-6 mx-auto">
-                            <div class="card border-primary mb-3">
-                                <div class="card-header bg-primary text-white">총 정산 금액</div>
-                                <div class="card-body">
-                                    <h5 class="card-title">{{ "{:,}".format(settlement.total_price) }}원</h5>
-                                </div>
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="mb-3">정산 상세</h1>
+        <p class="lead">정산 ID: {{ settlement.id }}</p>
+    </div>
+    <div class="col-auto">
+        <a href="{{ url_for('admin_settlements') }}" class="btn btn-secondary">
+            <i data-feather="arrow-left"></i> 목록으로
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">정산 정보</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th style="width: 35%">정산 ID</th>
+                            <td>{{ settlement.id }}</td>
+                        </tr>
+                        <tr>
+                            <th>대상자</th>
+                            <td>{{ settlement.user.username }} ({{ settlement.user.company_name }})</td>
+                        </tr>
+                        <tr>
+                            <th>정산 유형</th>
+                            <td>
+                                {% if settlement.settlement_type == 'shopping' %}
+                                    쇼핑
+                                {% else %}
+                                    플레이스
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>정산 기간</th>
+                            <td>{{ settlement.period_start.strftime('%Y-%m-%d') }} ~ {{ settlement.period_end.strftime('%Y-%m-%d') }}</td>
+                        </tr>
+                        <tr>
+                            <th>정산 상태</th>
+                            <td>
+                                {% if settlement.status == 'pending' %}
+                                    <span class="badge bg-warning">대기중</span>
+                                {% elif settlement.status == 'completed' %}
+                                    <span class="badge bg-success">완료</span>
+                                {% elif settlement.status == 'cancelled' %}
+                                    <span class="badge bg-danger">취소</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>정산 총액</th>
+                            <td><strong>{{ settlement.total_price|format_number }} 원</strong></td>
+                        </tr>
+                        <tr>
+                            <th>생성일</th>
+                            <td>{{ settlement.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% if settlement.completed_at %}
+                        <tr>
+                            <th>완료일</th>
+                            <td>{{ settlement.completed_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">정산 요약</h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-6 mb-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">정산 슬롯 수</h6>
+                                <h4>{{ items|length }} 개</h4>
                             </div>
                         </div>
                     </div>
-                    
-                    {% if settlement.status == 'pending' %}
-                    <div class="d-flex justify-content-end mt-3">
-                        <div class="btn-group">
-                            <form method="POST" action="{{ url_for('admin_settlement_action', settlement_id=settlement.id) }}" class="me-2">
-                                <input type="hidden" name="action" value="complete">
-                                <button type="submit" class="btn btn-success" onclick="return confirm('정말 정산을 완료 처리하시겠습니까?')">
-                                    <i class="feather-check"></i> 정산 완료
-                                </button>
-                            </form>
-                            <form method="POST" action="{{ url_for('admin_settlement_action', settlement_id=settlement.id) }}">
-                                <input type="hidden" name="action" value="cancel">
-                                <button type="submit" class="btn btn-danger" onclick="return confirm('정말 정산을 취소하시겠습니까?')">
-                                    <i class="feather-x"></i> 정산 취소
-                                </button>
-                            </form>
+                    <div class="col-md-6 mb-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">기본 단가</h6>
+                                <h4>30 원</h4>
+                            </div>
                         </div>
                     </div>
-                    {% endif %}
                 </div>
-            </div>
-            
-            <div class="card mb-4">
-                <div class="card-header">
-                    <h5 class="mb-0">정산 항목 목록</h5>
-                </div>
-                <div class="card-body">
-                    {% if items %}
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>슬롯 이름</th>
-                                    <th>슬롯 유형</th>
-                                    <th>전체 기간</th>
-                                    <th>정산 유효 기간</th>
-                                    <th>슬롯 단가</th>
-                                    <th>정산액</th>
-                                    <th>타입</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in items %}
-                                <tr {% if item.is_refund %}class="table-danger"{% endif %}>
-                                    <td>{{ loop.index }}</td>
-                                    <td>{{ item.slot_name }}</td>
-                                    <td>
-                                        {% if item.slot_type == 'shopping' %}
-                                            {% if item.slot_subtype == 'standard' %}
-                                            <span class="badge bg-info">쇼핑 (일반)</span>
-                                            {% else %}
-                                            <span class="badge bg-primary">쇼핑 (프리미엄)</span>
-                                            {% endif %}
-                                        {% else %}
-                                            {% if item.slot_subtype == 'search' %}
-                                            <span class="badge bg-success">플레이스 (검색유입)</span>
-                                            {% else %}
-                                            <span class="badge bg-secondary">플레이스 (저장)</span>
-                                            {% endif %}
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {{ item.start_date.strftime('%Y-%m-%d') }} ~ {{ item.end_date.strftime('%Y-%m-%d') }}
-                                    </td>
-                                    <td>
-                                        {% set start_date = item.start_date %}
-                                        {% set end_date = item.end_date %}
-                                        {% set period_start = settlement.period_start %}
-                                        {% set period_end = settlement.period_end %}
-                                        {% set today = now().date() %}
-                                        
-                                        {% set effective_start = [start_date, period_start]|max %}
-                                        {% set effective_end = [end_date, period_end, today]|min %}
-                                        
-                                        <span class="badge bg-success">{{ effective_start.strftime('%Y-%m-%d') }} ~ {{ effective_end.strftime('%Y-%m-%d') }}</span>
-                                    </td>
-                                    <td>{{ item.slot_price|safe_format }}원</td>
-                                    <td>{{ item.settlement_price|safe_format }}원</td>
-                                    <td>
-                                        {% if item.is_refund %}
-                                        <span class="badge bg-danger">환불({{ item.refund_amount|safe_format }}원)</span>
-                                        {% else %}
-                                        <span class="badge bg-success">정상</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
+                <div class="row text-center">
+                    <div class="col-md-6 mb-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">슬롯당 유입</h6>
+                                <h4>100 건</h4>
+                            </div>
+                        </div>
                     </div>
-                    {% else %}
-                    <div class="alert alert-secondary">
-                        정산 항목이 없습니다.
+                    <div class="col-md-6 mb-4">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6 class="card-title">정산 총액</h6>
+                                <h4>{{ settlement.total_price|format_number }} 원</h4>
+                            </div>
+                        </div>
                     </div>
-                    {% endif %}
                 </div>
-            </div>
-            
-            <div class="d-flex justify-content-between">
-                <a href="{{ url_for('admin_settlements') }}" class="btn btn-secondary">
-                    <i class="feather-arrow-left"></i> 목록으로
-                </a>
+                
+                {% if settlement.status == 'pending' %}
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <form method="POST" action="{{ url_for('admin_complete_settlement', settlement_id=settlement.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-success w-100">정산 완료 처리</button>
+                        </form>
+                    </div>
+                    <div class="col-md-6">
+                        <form method="POST" action="{{ url_for('admin_cancel_settlement', settlement_id=settlement.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger w-100">정산 취소</button>
+                        </form>
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">정산 항목</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>항목 ID</th>
+                        <th>슬롯 종류</th>
+                        <th>슬롯 이름</th>
+                        <th>기간</th>
+                        <th>일수</th>
+                        <th>유입수</th>
+                        <th>단가</th>
+                        <th>금액</th>
+                        <th>환불</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>{{ item.id }}</td>
+                        <td>
+                            {% if item.slot_type() == 'shopping' %}
+                                쇼핑
+                            {% else %}
+                                플레이스
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.slot_type() == 'shopping' %}
+                                {{ item.shopping_slot.slot_name }}
+                            {% else %}
+                                {{ item.place_slot.slot_name }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.slot_type() == 'shopping' %}
+                                {% if item.shopping_slot.start_date and item.shopping_slot.end_date %}
+                                    {{ item.shopping_slot.start_date.strftime('%Y-%m-%d') }} ~ {{ item.shopping_slot.end_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            {% else %}
+                                {% if item.place_slot.start_date and item.place_slot.end_date %}
+                                    {{ item.place_slot.start_date.strftime('%Y-%m-%d') }} ~ {{ item.place_slot.end_date.strftime('%Y-%m-%d') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if item.slot_type() == 'shopping' %}
+                                {% if item.shopping_slot.start_date and item.shopping_slot.end_date %}
+                                    {% set days = (item.shopping_slot.end_date - item.shopping_slot.start_date).days + 1 %}
+                                    {{ days }}일
+                                {% else %}
+                                    -
+                                {% endif %}
+                            {% else %}
+                                {% if item.place_slot.start_date and item.place_slot.end_date %}
+                                    {% set days = (item.place_slot.end_date - item.place_slot.start_date).days + 1 %}
+                                    {{ days }}일
+                                {% else %}
+                                    -
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td>100</td>
+                        <td>30원</td>
+                        <td>{{ item.settlement_price|format_number }}원</td>
+                        <td>
+                            {% if item.is_refund %}
+                                <span class="badge bg-warning">환불 -{{ item.refund_amount|format_number }}원</span>
+                            {% else %}
+                                <span class="badge bg-secondary">해당없음</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center py-3">정산 항목이 없습니다.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if settlement.notes %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">메모</h5>
+    </div>
+    <div class="card-body">
+        <p>{{ settlement.notes|nl2br|safe }}</p>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 필요한 경우 추가 스크립트 작성
+</script>
 {% endblock %}
