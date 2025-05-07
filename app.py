@@ -1825,26 +1825,25 @@ def distributor_approve_request(approval_id, action):
             slot = approval.shopping_slot
             slot.status = 'live'
             
-            # 정산 자동 처리 - 슬롯 가격과 기간에 따른 정산 금액 계산
-            if slot.start_date and slot.end_date and slot.slot_price:
+            # 정산 자동 처리 - 슬롯당 100유입 리워드로 고정
+            if slot.start_date and slot.end_date:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
                 days = (slot.end_date - slot.start_date).days + 1
-                total_price = days * slot.slot_price
+                
+                # 슬롯당 100유입 리워드로 고정
+                slot_reward = 100
+                total_price = days * slot_reward
                 total_admin_price = days * (slot.admin_price or 0)
                 
                 # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {total_price}원")
+                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
                 
                 # 정산 자동 생성
                 today = datetime.now().date()
                 
-                # 자동 정산 생성 (이번 달 기준)
-                month_start = today.replace(day=1)
-                if today.month == 12:
-                    next_month = today.replace(year=today.year + 1, month=1, day=1)
-                else:
-                    next_month = today.replace(month=today.month + 1, day=1)
-                month_end = next_month - timedelta(days=1)
+                # 자동 정산 생성 (일별 정산)
+                day_start = today
+                day_end = today
                 
                 # 슬롯 정산 상태 먼저 업데이트
                 slot.settlement_status = 'in_progress'
@@ -1863,7 +1862,7 @@ def distributor_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=existing_settlement.id,
                         shopping_slot_id=slot.id,
-                        slot_price=slot.slot_price,
+                        slot_price=slot_reward,  # 100유입 리워드로 고정
                         admin_price=slot.admin_price,
                         settlement_price=total_price
                     )
@@ -1884,8 +1883,8 @@ def distributor_approve_request(approval_id, action):
                         user_id=slot.user_id,
                         admin_id=None,  # 총판 승인일 경우 admin_id는 None
                         settlement_type='shopping',
-                        period_start=month_start,
-                        period_end=month_end,
+                        period_start=day_start,
+                        period_end=day_end,
                         status='pending',
                         total_price=total_price,
                         admin_price=total_admin_price,
@@ -1914,26 +1913,25 @@ def distributor_approve_request(approval_id, action):
             slot = approval.place_slot
             slot.status = 'live'
             
-            # 정산 자동 처리 - 슬롯 가격과 기간에 따른 정산 금액 계산
-            if slot.start_date and slot.end_date and slot.slot_price:
+            # 정산 자동 처리 - 슬롯당 100유입 리워드로 고정
+            if slot.start_date and slot.end_date:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
                 days = (slot.end_date - slot.start_date).days + 1
-                total_price = days * slot.slot_price
+                
+                # 슬롯당 100유입 리워드로 고정
+                slot_reward = 100
+                total_price = days * slot_reward
                 total_admin_price = days * (slot.admin_price or 0)
                 
                 # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot.slot_price}원 = {total_price}원")
+                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
                 
                 # 정산 자동 생성
                 today = datetime.now().date()
                 
-                # 자동 정산 생성 (이번 달 기준)
-                month_start = today.replace(day=1)
-                if today.month == 12:
-                    next_month = today.replace(year=today.year + 1, month=1, day=1)
-                else:
-                    next_month = today.replace(month=today.month + 1, day=1)
-                month_end = next_month - timedelta(days=1)
+                # 자동 정산 생성 (일별 정산)
+                day_start = today
+                day_end = today
                 
                 # 슬롯 정산 상태 먼저 업데이트
                 slot.settlement_status = 'in_progress'
@@ -1952,7 +1950,7 @@ def distributor_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=existing_settlement.id,
                         place_slot_id=slot.id,
-                        slot_price=slot.slot_price,
+                        slot_price=slot_reward,  # 100유입 리워드로 고정
                         admin_price=slot.admin_price,
                         settlement_price=total_price
                     )
