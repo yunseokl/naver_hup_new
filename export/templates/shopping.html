@@ -1,0 +1,411 @@
+{% extends "layout.html" %}
+
+{% block title %}쇼핑 데이터 입력{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>네이버 쇼핑 데이터 관리</h2>
+    <div>
+        <form action="{{ url_for('shopping') }}" method="post" enctype="multipart/form-data" class="d-inline-block">
+            <div class="input-group">
+                <input type="file" class="form-control" id="file" name="file" accept=".xlsx, .xls">
+                <button type="submit" class="btn btn-primary">엑셀 업로드</button>
+            </div>
+        </form>
+        <button class="btn btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#addShoppingModal">
+            <i data-feather="plus"></i> 신규 추가
+        </button>
+    </div>
+</div>
+
+<!-- 검색 및 필터링 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" placeholder="검색어를 입력하세요..." id="searchInput">
+                    <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                        <i data-feather="search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select mb-3" id="storeTypeFilter">
+                    <option value="">전체 스토어 타입</option>
+                    <option value="스마트스토어">스마트스토어</option>
+                    <option value="쇼핑">쇼핑</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group mb-3">
+                    <span class="input-group-text">시작일</span>
+                    <input type="date" class="form-control" id="startDateFilter">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group mb-3">
+                    <span class="input-group-text">종료일</span>
+                    <input type="date" class="form-control" id="endDateFilter">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 데이터 테이블 -->
+<div class="table-responsive card">
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th>스토어타입</th>
+                <th>광고품ID</th>
+                <th>쇼핑캠페인ID</th>
+                <th>이미지</th>
+                <th>상품명</th>
+                <th>가격</th>
+                <th>스토어명</th>
+                <th>노출수/클릭수</th>
+                <th>금액</th>
+                <th>시작일<br>종료일</th>
+                <th>입찰</th>
+                <th>타겟팅</th>
+                <th>관리</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if shopping_data_list %}
+                {% for item in shopping_data_list %}
+                <tr>
+                    <td><input type="checkbox" class="item-select" data-id="{{ item.id }}" {% if item.select %}checked{% endif %}></td>
+                    <td>{{ item.store_type }}</td>
+                    <td>{{ item.product_id }}</td>
+                    <td>{{ item.shopping_campaign_id }}</td>
+                    <td>
+                        <div class="shopping-item-img">
+                            <img src="{{ url_for('static', filename='img/placeholder-product.svg') }}" class="img-thumbnail" alt="상품 이미지" width="50">
+                        </div>
+                    </td>
+                    <td>
+                        <div>{{ item.product_name }}</div>
+                        {% if item.keywords %}
+                        <small class="text-muted d-block">{{ item.keywords }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.price %}
+                        <div>{{ "{:,}".format(item.price) }}원</div>
+                        {% endif %}
+                        {% if item.sale_price %}
+                        <div class="text-danger">{{ "{:,}".format(item.sale_price) }}원</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.store_name }}</td>
+                    <td>{{ item.impressions }}</td>
+                    <td>{{ item.amount }}</td>
+                    <td>
+                        {% if item.start_date %}
+                        <div>{{ item.start_date }}</div>
+                        {% endif %}
+                        {% if item.end_date %}
+                        <div>{{ item.end_date }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.bid_type }}</td>
+                    <td>{{ item.targeting }}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary edit-btn" data-id="{{ item.id }}" 
+                                    data-bs-toggle="modal" data-bs-target="#editShoppingModal">
+                                <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger delete-btn" data-id="{{ item.id }}">
+                                <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="14" class="text-center py-4">
+                        데이터가 없습니다. 새 데이터를 추가하거나 엑셀 파일을 업로드해주세요.
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 액션 버튼 -->
+<div class="d-flex justify-content-between mt-3 mb-5">
+    <div>
+        <button class="btn btn-danger" id="deleteSelectedBtn" disabled>선택 삭제</button>
+    </div>
+    <div>
+        <nav aria-label="페이지 네비게이션">
+            <ul class="pagination justify-content-end">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">이전</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">다음</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 신규 쇼핑 데이터 모달 -->
+<div class="modal fade" id="addShoppingModal" tabindex="-1" aria-labelledby="addShoppingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addShoppingModalLabel">네이버 쇼핑 데이터 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('shopping') }}" method="post" id="shoppingForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="store_type" class="form-label">스토어 타입</label>
+                                <select class="form-select" id="store_type" name="store_type">
+                                    <option value="스마트스토어">스마트스토어</option>
+                                    <option value="쇼핑">쇼핑</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="product_id" class="form-label">광고품ID</label>
+                                <input type="text" class="form-control" id="product_id" name="product_id">
+                            </div>
+                            <div class="mb-3">
+                                <label for="shopping_campaign_id" class="form-label">쇼핑캠페인ID</label>
+                                <input type="text" class="form-control" id="shopping_campaign_id" name="shopping_campaign_id">
+                            </div>
+                            <div class="mb-3">
+                                <label for="product_name" class="form-label">상품명</label>
+                                <input type="text" class="form-control" id="product_name" name="product_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="keywords" class="form-label">키워드</label>
+                                <textarea class="form-control" id="keywords" name="keywords" rows="2"></textarea>
+                                <small class="form-text text-muted">쉼표로 구분하여 입력하세요</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="store_name" class="form-label">스토어명</label>
+                                <input type="text" class="form-control" id="store_name" name="store_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="price" class="form-label">가격</label>
+                                <input type="number" class="form-control" id="price" name="price">
+                            </div>
+                            <div class="mb-3">
+                                <label for="sale_price" class="form-label">세일가격</label>
+                                <input type="number" class="form-control" id="sale_price" name="sale_price">
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="start_date" class="form-label">시작일</label>
+                                        <input type="date" class="form-control" id="start_date" name="start_date">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="end_date" class="form-label">종료일</label>
+                                        <input type="date" class="form-control" id="end_date" name="end_date">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="bid_type" class="form-label">입찰방식</label>
+                                        <input type="text" class="form-control" id="bid_type" name="bid_type" placeholder="예: 10원">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="targeting" class="form-label">타겟팅</label>
+                                        <input type="text" class="form-control" id="targeting" name="targeting" placeholder="예: MC">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" form="shoppingForm" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 편집 쇼핑 데이터 모달 -->
+<div class="modal fade" id="editShoppingModal" tabindex="-1" aria-labelledby="editShoppingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editShoppingModalLabel">네이버 쇼핑 데이터 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('shopping') }}" method="post" id="editShoppingForm">
+                    <input type="hidden" id="edit_id" name="id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_store_type" class="form-label">스토어 타입</label>
+                                <select class="form-select" id="edit_store_type" name="store_type">
+                                    <option value="스마트스토어">스마트스토어</option>
+                                    <option value="쇼핑">쇼핑</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_product_id" class="form-label">광고품ID</label>
+                                <input type="text" class="form-control" id="edit_product_id" name="product_id">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_shopping_campaign_id" class="form-label">쇼핑캠페인ID</label>
+                                <input type="text" class="form-control" id="edit_shopping_campaign_id" name="shopping_campaign_id">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_product_name" class="form-label">상품명</label>
+                                <input type="text" class="form-control" id="edit_product_name" name="product_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_keywords" class="form-label">키워드</label>
+                                <textarea class="form-control" id="edit_keywords" name="keywords" rows="2"></textarea>
+                                <small class="form-text text-muted">쉼표로 구분하여 입력하세요</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_store_name" class="form-label">스토어명</label>
+                                <input type="text" class="form-control" id="edit_store_name" name="store_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_price" class="form-label">가격</label>
+                                <input type="number" class="form-control" id="edit_price" name="price">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_sale_price" class="form-label">세일가격</label>
+                                <input type="number" class="form-control" id="edit_sale_price" name="sale_price">
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="edit_start_date" class="form-label">시작일</label>
+                                        <input type="date" class="form-control" id="edit_start_date" name="start_date">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="edit_end_date" class="form-label">종료일</label>
+                                        <input type="date" class="form-control" id="edit_end_date" name="end_date">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="edit_bid_type" class="form-label">입찰방식</label>
+                                        <input type="text" class="form-control" id="edit_bid_type" name="bid_type" placeholder="예: 10원">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="edit_targeting" class="form-label">타겟팅</label>
+                                        <input type="text" class="form-control" id="edit_targeting" name="targeting" placeholder="예: MC">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" form="editShoppingForm" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 아이콘 초기화
+        feather.replace();
+        
+        // 네비게이션 링크 활성화
+        setActiveNavLink();
+        
+        // 전체 선택 체크박스
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const itemCheckboxes = document.querySelectorAll('.item-select');
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                itemCheckboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+                updateDeleteButtonState();
+            });
+        }
+        
+        // 개별 체크박스 이벤트
+        itemCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateDeleteButtonState);
+        });
+        
+        // 삭제 버튼 상태 업데이트
+        function updateDeleteButtonState() {
+            const checkedCount = document.querySelectorAll('.item-select:checked').length;
+            deleteSelectedBtn.disabled = checkedCount === 0;
+        }
+        
+        // 삭제 버튼 클릭 이벤트
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.addEventListener('click', function() {
+                if (confirm('선택한 항목을 삭제하시겠습니까?')) {
+                    const selectedIds = Array.from(document.querySelectorAll('.item-select:checked'))
+                        .map(checkbox => checkbox.getAttribute('data-id'));
+                    
+                    // 여기에 실제 삭제 로직 추가
+                    console.log('Delete IDs:', selectedIds);
+                    // 삭제 후 페이지 새로고침 또는 상태 업데이트
+                }
+            });
+        }
+        
+        // 개별 삭제 버튼
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                if (confirm('이 항목을 삭제하시겠습니까?')) {
+                    // 여기에 실제 삭제 로직 추가
+                    console.log('Delete ID:', id);
+                    // 삭제 후 페이지 새로고침 또는 상태 업데이트
+                }
+            });
+        });
+        
+        // 폼 유효성 검증
+        setupFormValidation('shoppingForm');
+        setupFormValidation('editShoppingForm');
+    });
+</script>
+{% endblock %}

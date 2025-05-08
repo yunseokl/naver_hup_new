@@ -1,0 +1,237 @@
+{% extends 'layout.html' %}
+
+{% block title %}대행사 대시보드{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="display-6 mb-4">대행사 대시보드</h2>
+            
+            <!-- 퀵 액션 버튼 -->
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                <a href="{{ url_for('request_slot_quota') }}" class="btn btn-primary">
+                    <i class="icon icon-plus"></i> 슬롯 할당량 요청
+                </a>
+                <a href="{{ url_for('create_shopping_slot') }}" class="btn btn-info">
+                    <i class="icon icon-shopping-cart"></i> 쇼핑 슬롯 등록
+                </a>
+                <a href="{{ url_for('create_place_slot') }}" class="btn btn-info">
+                    <i class="icon icon-map-marker"></i> 플레이스 슬롯 등록
+                </a>
+            </div>
+            
+            <!-- 슬롯 할당량 정보 -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">슬롯 할당량 현황</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-info text-white">쇼핑 슬롯</div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h5 class="card-title mb-0">할당량: {{ slot_quota.shopping_slots_limit }}</h5>
+                                        <span class="badge bg-secondary">사용: {{ slot_quota.shopping_slots_used }}</span>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 10px;">
+                                        <div class="progress-bar bg-info" role="progressbar" 
+                                             style="width: {% if slot_quota.shopping_slots_limit > 0 %}{{ (slot_quota.shopping_slots_used / slot_quota.shopping_slots_limit) * 100 }}{% else %}0{% endif %}%;" 
+                                             aria-valuenow="{{ slot_quota.shopping_slots_used }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ slot_quota.shopping_slots_limit }}">
+                                        </div>
+                                    </div>
+                                    <p class="card-text mb-0">남은 할당량: {{ slot_quota.shopping_slots_limit - slot_quota.shopping_slots_used }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card h-100">
+                                <div class="card-header bg-info text-white">플레이스 슬롯</div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <h5 class="card-title mb-0">할당량: {{ slot_quota.place_slots_limit }}</h5>
+                                        <span class="badge bg-secondary">사용: {{ slot_quota.place_slots_used }}</span>
+                                    </div>
+                                    <div class="progress mb-3" style="height: 10px;">
+                                        <div class="progress-bar bg-info" role="progressbar" 
+                                             style="width: {% if slot_quota.place_slots_limit > 0 %}{{ (slot_quota.place_slots_used / slot_quota.place_slots_limit) * 100 }}{% else %}0{% endif %}%;" 
+                                             aria-valuenow="{{ slot_quota.place_slots_used }}" 
+                                             aria-valuemin="0" 
+                                             aria-valuemax="{{ slot_quota.place_slots_limit }}">
+                                        </div>
+                                    </div>
+                                    <p class="card-text mb-0">남은 할당량: {{ slot_quota.place_slots_limit - slot_quota.place_slots_used }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>할당량 추가가 필요하신가요?</span>
+                        <a href="{{ url_for('request_slot_quota') }}" class="btn btn-sm btn-primary">
+                            할당량 요청
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 할당량 요청 내역 -->
+            {% if pending_quota_requests > 0 or quota_requests %}
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">할당량 요청 내역</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>요청일</th>
+                                    <th>요청 유형</th>
+                                    <th>요청 수량</th>
+                                    <th>기간</th>
+                                    <th>상태</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for request in quota_requests %}
+                                <tr>
+                                    <td>{{ request.requested_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if request.shopping_slots_requested > 0 and request.place_slots_requested > 0 %}
+                                            쇼핑/플레이스
+                                        {% elif request.shopping_slots_requested > 0 %}
+                                            쇼핑 ({{ request.shopping_slot_type }})
+                                        {% elif request.place_slots_requested > 0 %}
+                                            플레이스 ({{ request.place_slot_type }})
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if request.shopping_slots_requested > 0 %}
+                                            쇼핑: {{ request.shopping_slots_requested }}개<br>
+                                        {% endif %}
+                                        {% if request.place_slots_requested > 0 %}
+                                            플레이스: {{ request.place_slots_requested }}개
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ request.start_date.strftime('%Y-%m-%d') }} ~ {{ request.end_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        {% if request.status == 'pending' %}
+                                            <span class="badge bg-warning">대기중</span>
+                                        {% elif request.status == 'approved' %}
+                                            <span class="badge bg-success">승인됨</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">거절됨</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 슬롯 통계 대시보드 -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">쇼핑 슬롯 통계</div>
+                        <div class="card-body">
+                            <h5 class="card-title">전체 슬롯: {{ shopping_slots_count }}</h5>
+                            <div class="d-flex justify-content-between mb-3">
+                                <div>
+                                    <span class="badge bg-warning">대기중: {{ pending_shopping_slots }}</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">승인됨: {{ approved_shopping_slots }}</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-primary">라이브: {{ live_shopping_slots }}</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-danger">거절됨: {{ rejected_shopping_slots }}</span>
+                                </div>
+                            </div>
+                            <div class="progress mb-3" style="height: 20px;">
+                                {% if shopping_slots_count > 0 %}
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (pending_shopping_slots / shopping_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ pending_shopping_slots }}" aria-valuemin="0" aria-valuemax="{{ shopping_slots_count }}">
+                                    {{ pending_shopping_slots }}
+                                </div>
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (approved_shopping_slots / shopping_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ approved_shopping_slots }}" aria-valuemin="0" aria-valuemax="{{ shopping_slots_count }}">
+                                    {{ approved_shopping_slots }}
+                                </div>
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (live_shopping_slots / shopping_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ live_shopping_slots }}" aria-valuemin="0" aria-valuemax="{{ shopping_slots_count }}">
+                                    {{ live_shopping_slots }}
+                                </div>
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (rejected_shopping_slots / shopping_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ rejected_shopping_slots }}" aria-valuemin="0" aria-valuemax="{{ shopping_slots_count }}">
+                                    {{ rejected_shopping_slots }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="d-grid">
+                                <a href="{{ url_for('agency_shopping_slots') }}" class="btn btn-outline-primary">쇼핑 슬롯 관리</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-header bg-info text-white">플레이스 슬롯 통계</div>
+                        <div class="card-body">
+                            <h5 class="card-title">전체 슬롯: {{ place_slots_count }}</h5>
+                            <div class="d-flex justify-content-between mb-3">
+                                <div>
+                                    <span class="badge bg-warning">대기중: {{ pending_place_slots }}</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">승인됨: {{ approved_place_slots }}</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-primary">라이브: {{ live_place_slots }}</span>
+                                </div>
+                                <div>
+                                    <span class="badge bg-danger">거절됨: {{ rejected_place_slots }}</span>
+                                </div>
+                            </div>
+                            <div class="progress mb-3" style="height: 20px;">
+                                {% if place_slots_count > 0 %}
+                                <div class="progress-bar bg-warning" role="progressbar" style="width: {{ (pending_place_slots / place_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ pending_place_slots }}" aria-valuemin="0" aria-valuemax="{{ place_slots_count }}">
+                                    {{ pending_place_slots }}
+                                </div>
+                                <div class="progress-bar bg-success" role="progressbar" style="width: {{ (approved_place_slots / place_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ approved_place_slots }}" aria-valuemin="0" aria-valuemax="{{ place_slots_count }}">
+                                    {{ approved_place_slots }}
+                                </div>
+                                <div class="progress-bar bg-primary" role="progressbar" style="width: {{ (live_place_slots / place_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ live_place_slots }}" aria-valuemin="0" aria-valuemax="{{ place_slots_count }}">
+                                    {{ live_place_slots }}
+                                </div>
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ (rejected_place_slots / place_slots_count) * 100 }}%" 
+                                     aria-valuenow="{{ rejected_place_slots }}" aria-valuemin="0" aria-valuemax="{{ place_slots_count }}">
+                                    {{ rejected_place_slots }}
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="d-grid">
+                                <a href="{{ url_for('agency_place_slots') }}" class="btn btn-outline-primary">플레이스 슬롯 관리</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,108 @@
+{% extends "layout.html" %}
+
+{% block title %}제출 완료{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success-subtle">
+                <h4 class="mb-0 text-success">데이터 제출 완료</h4>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <i data-feather="check-circle" class="text-success" style="width: 64px; height: 64px;"></i>
+                    <h3 class="mt-3">
+                        {% if submission_type == 'shopping' %}
+                        네이버 쇼핑 데이터가 성공적으로 저장되었습니다.
+                        {% elif submission_type == 'place' %}
+                        네이버 플레이스 데이터가 성공적으로 저장되었습니다.
+                        {% else %}
+                        데이터가 성공적으로 저장되었습니다.
+                        {% endif %}
+                    </h3>
+                    <p class="lead text-muted">입력하신 데이터가 데이터베이스에 저장되었습니다.</p>
+                </div>
+                
+                {% if submission_data %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <caption>제출된 데이터</caption>
+                        <tbody>
+                            {% if submission_type == 'shopping' %}
+                                <tr>
+                                    <th scope="row">제품명</th>
+                                    <td>{{ submission_data.product_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">가격</th>
+                                    <td>{{ submission_data.price }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">카테고리</th>
+                                    <td>{{ submission_data.category }}</td>
+                                </tr>
+                                {% if submission_data.brand %}
+                                <tr>
+                                    <th scope="row">브랜드</th>
+                                    <td>{{ submission_data.brand }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if submission_data.description %}
+                                <tr>
+                                    <th scope="row">제품 설명</th>
+                                    <td>{{ submission_data.description }}</td>
+                                </tr>
+                                {% endif %}
+                            {% elif submission_type == 'place' %}
+                                <tr>
+                                    <th scope="row">장소명</th>
+                                    <td>{{ submission_data.place_name }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">카테고리</th>
+                                    <td>{{ submission_data.category }}</td>
+                                </tr>
+                                <tr>
+                                    <th scope="row">주소</th>
+                                    <td>{{ submission_data.address }}</td>
+                                </tr>
+                                {% if submission_data.phone %}
+                                <tr>
+                                    <th scope="row">전화번호</th>
+                                    <td>{{ submission_data.phone }}</td>
+                                </tr>
+                                {% endif %}
+                                {% if submission_data.business_hours %}
+                                <tr>
+                                    <th scope="row">영업시간</th>
+                                    <td>{{ submission_data.business_hours }}</td>
+                                </tr>
+                                {% endif %}
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+                
+                <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                    {% if submission_type == 'shopping' %}
+                    <a href="{{ url_for('shopping') }}" class="btn btn-primary btn-lg">추가 데이터 입력</a>
+                    {% elif submission_type == 'place' %}
+                    <a href="{{ url_for('place') }}" class="btn btn-primary btn-lg">추가 데이터 입력</a>
+                    {% endif %}
+                    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-lg">홈으로 돌아가기</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        feather.replace();
+    });
+</script>
+{% endblock %}

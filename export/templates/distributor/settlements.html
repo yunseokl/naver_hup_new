@@ -1,0 +1,145 @@
+{% extends "layout.html" %}
+
+{% block title %}정산 내역 - 총판{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i data-feather="dollar-sign" class="me-2"></i> 정산 내역</h2>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">정산 내역</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>정산 유형</th>
+                            <th>기간</th>
+                            <th>총 금액</th>
+                            <th>상태</th>
+                            <th>생성일</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if settlements %}
+                            {% for settlement in settlements %}
+                            <tr>
+                                <td>{{ settlement.id }}</td>
+                                <td>
+                                    {% if settlement.settlement_type == 'shopping' %}
+                                    <span class="badge bg-info">쇼핑</span>
+                                    {% else %}
+                                    <span class="badge bg-success">플레이스</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ settlement.period_start.strftime('%Y-%m-%d') }} ~ {{ settlement.period_end.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ '{:,}'.format(settlement.total_price) }}원</td>
+                                <td>
+                                    {% if settlement.status == 'pending' %}
+                                    <span class="badge bg-warning">진행 중</span>
+                                    {% elif settlement.status == 'completed' %}
+                                    <span class="badge bg-success">완료</span>
+                                    {% elif settlement.status == 'cancelled' %}
+                                    <span class="badge bg-danger">취소됨</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ settlement.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>
+                                    <a href="{{ url_for('distributor_settlement_detail', settlement_id=settlement.id) }}" class="btn btn-sm btn-outline-primary">상세보기</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-3">정산 내역이 없습니다.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">쇼핑 슬롯 정산 내역</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="shoppingChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">플레이스 슬롯 정산 내역</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="placeChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 쇼핑 차트 데이터
+    const shoppingCtx = document.getElementById('shoppingChart').getContext('2d');
+    const shoppingChart = new Chart(shoppingCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+            datasets: [{
+                label: '정산 금액',
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+    
+    // 플레이스 차트 데이터
+    const placeCtx = document.getElementById('placeChart').getContext('2d');
+    const placeChart = new Chart(placeCtx, {
+        type: 'bar',
+        data: {
+            labels: ['1월', '2월', '3월', '4월', '5월', '6월'],
+            datasets: [{
+                label: '정산 금액',
+                data: [0, 0, 0, 0, 0, 0],
+                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,289 @@
+{% extends 'layout.html' %}
+
+{% block title %}환불 요청 관리{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <!-- 사이드바 -->
+        {% include 'admin/sidebar.html' %}
+        
+        <!-- 메인 콘텐츠 -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h2>환불 요청 관리</h2>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-sm btn-outline-secondary">대시보드</a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 필터 옵션 -->
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">필터</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">상태</label>
+                            <select class="form-select bg-dark text-white" id="status" name="status">
+                                <option value="">모든 상태</option>
+                                <option value="pending" {% if request.args.get('status') == 'pending' %}selected{% endif %}>대기 중</option>
+                                <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>승인됨</option>
+                                <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>거절됨</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="slot_type" class="form-label">슬롯 유형</label>
+                            <select class="form-select bg-dark text-white" id="slot_type" name="slot_type">
+                                <option value="">모든 유형</option>
+                                <option value="shopping" {% if request.args.get('slot_type') == 'shopping' %}selected{% endif %}>쇼핑</option>
+                                <option value="place" {% if request.args.get('slot_type') == 'place' %}selected{% endif %}>플레이스</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="search" class="form-label">검색</label>
+                            <input type="text" class="form-control bg-dark text-white" id="search" name="search" placeholder="슬롯명, 요청자 검색" value="{{ request.args.get('search', '') }}">
+                        </div>
+                        <div class="col-md-3 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">필터 적용</button>
+                            <a href="{{ url_for('admin_refunds') }}" class="btn btn-secondary ms-2">초기화</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- 환불 요청 목록 -->
+            <div class="card bg-dark text-white">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">환불 요청 목록</h5>
+                        <span class="badge bg-light text-dark rounded-pill">총 {{ refunds|length }}건</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if refunds %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>요청자</th>
+                                    <th>슬롯 유형</th>
+                                    <th>슬롯명</th>
+                                    <th>요청일</th>
+                                    <th>남은 기간</th>
+                                    <th>환불 금액</th>
+                                    <th>상태</th>
+                                    <th>관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for refund in refunds %}
+                                <tr>
+                                    <td>{{ refund.id }}</td>
+                                    <td>{{ refund.requester.company_name }}</td>
+                                    <td>
+                                        {% if refund.slot_type == 'shopping' %}
+                                            <span class="badge bg-primary">쇼핑</span>
+                                        {% else %}
+                                            <span class="badge bg-success">플레이스</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ refund.slot.slot_name }}</td>
+                                    <td>{{ refund.requested_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ refund.remaining_days }}일 / {{ refund.total_days }}일</td>
+                                    <td>{{ "{:,}".format(refund.refund_amount) }}원</td>
+                                    <td>
+                                        {% if refund.status == 'pending' %}
+                                            <span class="badge bg-warning">대기 중</span>
+                                        {% elif refund.status == 'approved' %}
+                                            <span class="badge bg-success">승인됨</span>
+                                        {% elif refund.status == 'rejected' %}
+                                            <span class="badge bg-danger">거절됨</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if refund.status == 'pending' %}
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal{{ refund.id }}">
+                                                <i data-feather="check" class="me-1" style="width: 14px; height: 14px;"></i> 승인
+                                            </button>
+                                            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#rejectModal{{ refund.id }}">
+                                                <i data-feather="x" class="me-1" style="width: 14px; height: 14px;"></i> 거절
+                                            </button>
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">처리 완료</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                
+                                <!-- 환불 요청 세부 모달 -->
+                                <div class="modal fade" id="viewModal{{ refund.id }}" tabindex="-1" aria-labelledby="viewModalLabel{{ refund.id }}" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg">
+                                        <div class="modal-content bg-dark text-white">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="viewModalLabel{{ refund.id }}">환불 요청 상세 정보</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <h6>요청 정보</h6>
+                                                <dl class="row">
+                                                    <dt class="col-sm-3">요청자</dt>
+                                                    <dd class="col-sm-9">{{ refund.requester.company_name }}</dd>
+                                                    
+                                                    <dt class="col-sm-3">슬롯 유형</dt>
+                                                    <dd class="col-sm-9">{{ "쇼핑" if refund.slot_type == 'shopping' else "플레이스" }}</dd>
+                                                    
+                                                    <dt class="col-sm-3">슬롯명</dt>
+                                                    <dd class="col-sm-9">{{ refund.slot.slot_name }}</dd>
+                                                    
+                                                    <dt class="col-sm-3">요청일</dt>
+                                                    <dd class="col-sm-9">{{ refund.requested_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+                                                    
+                                                    <dt class="col-sm-3">상태</dt>
+                                                    <dd class="col-sm-9">
+                                                        {% if refund.status == 'pending' %}
+                                                            <span class="badge bg-warning">대기 중</span>
+                                                        {% elif refund.status == 'approved' %}
+                                                            <span class="badge bg-success">승인됨</span>
+                                                        {% elif refund.status == 'rejected' %}
+                                                            <span class="badge bg-danger">거절됨</span>
+                                                        {% endif %}
+                                                    </dd>
+                                                </dl>
+                                                
+                                                <h6>환불 정보</h6>
+                                                <dl class="row">
+                                                    <dt class="col-sm-3">전체 기간</dt>
+                                                    <dd class="col-sm-9">{{ refund.total_days }}일</dd>
+                                                    
+                                                    <dt class="col-sm-3">남은 기간</dt>
+                                                    <dd class="col-sm-9">{{ refund.remaining_days }}일</dd>
+                                                    
+                                                    <dt class="col-sm-3">슬롯 단가</dt>
+                                                    <dd class="col-sm-9">{{ "{:,}".format(refund.slot.slot_price) }}원</dd>
+                                                    
+                                                    <dt class="col-sm-3">환불 금액</dt>
+                                                    <dd class="col-sm-9">{{ "{:,}".format(refund.refund_amount) }}원</dd>
+                                                </dl>
+                                                
+                                                <h6>환불 사유</h6>
+                                                <div class="p-3 bg-secondary rounded mb-3">
+                                                    <p>{{ refund.refund_reason|nl2br }}</p>
+                                                </div>
+                                                
+                                                {% if refund.status != 'pending' %}
+                                                <h6>처리 결과</h6>
+                                                <dl class="row">
+                                                    <dt class="col-sm-3">처리자</dt>
+                                                    <dd class="col-sm-9">{{ refund.approver.username if refund.approver else '-' }}</dd>
+                                                    
+                                                    <dt class="col-sm-3">처리일</dt>
+                                                    <dd class="col-sm-9">{{ refund.processed_at.strftime('%Y-%m-%d %H:%M') if refund.processed_at else '-' }}</dd>
+                                                    
+                                                    {% if refund.response_comment %}
+                                                    <dt class="col-sm-3">처리 코멘트</dt>
+                                                    <dd class="col-sm-9">{{ refund.response_comment|nl2br }}</dd>
+                                                    {% endif %}
+                                                </dl>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 승인 모달 -->
+                                <div class="modal fade" id="approveModal{{ refund.id }}" tabindex="-1" aria-labelledby="approveModalLabel{{ refund.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content bg-dark text-white">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="approveModalLabel{{ refund.id }}">환불 요청 승인</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ url_for('admin_approve_refund', refund_id=refund.id, action='approve') }}" method="post">
+                                                <div class="modal-body">
+                                                    <p>
+                                                        <strong>{{ refund.requester.company_name }}</strong>의 
+                                                        <strong>{{ refund.slot.slot_name }}</strong> 슬롯 환불 요청을 승인하시겠습니까?
+                                                    </p>
+                                                    <div class="alert alert-info">
+                                                        <p class="mb-0">환불 금액: <strong>{{ "{:,}".format(refund.refund_amount) }}원</strong></p>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label for="response_comment{{ refund.id }}" class="form-label">응답 코멘트 (선택사항)</label>
+                                                        <textarea class="form-control bg-dark text-white" id="response_comment{{ refund.id }}" name="response_comment" rows="3"></textarea>
+                                                    </div>
+                                                    <div class="alert alert-warning">
+                                                        <p class="mb-0">승인 시 해당 슬롯은 '환불됨' 상태로 변경되며, 환불 정산이 생성됩니다.</p>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                                    <button type="submit" class="btn btn-success">승인</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- 거절 모달 -->
+                                <div class="modal fade" id="rejectModal{{ refund.id }}" tabindex="-1" aria-labelledby="rejectModalLabel{{ refund.id }}" aria-hidden="true">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content bg-dark text-white">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="rejectModalLabel{{ refund.id }}">환불 요청 거절</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form action="{{ url_for('admin_approve_refund', refund_id=refund.id, action='reject') }}" method="post">
+                                                <div class="modal-body">
+                                                    <p>
+                                                        <strong>{{ refund.requester.company_name }}</strong>의 
+                                                        <strong>{{ refund.slot.slot_name }}</strong> 슬롯 환불 요청을 거절하시겠습니까?
+                                                    </p>
+                                                    <div class="mb-3">
+                                                        <label for="response_comment{{ refund.id }}_reject" class="form-label">거절 사유 (필수)</label>
+                                                        <textarea class="form-control bg-dark text-white" id="response_comment{{ refund.id }}_reject" name="response_comment" rows="3" required></textarea>
+                                                    </div>
+                                                    <div class="alert alert-danger">
+                                                        <p class="mb-0">거절 시 슬롯 상태는 다시 '라이브'로 변경됩니다.</p>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                                                    <button type="submit" class="btn btn-danger">거절</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info">
+                        <p class="mb-0">처리할 환불 요청이 없습니다.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 아이콘 초기화
+        feather.replace();
+    });
+</script>
+{% endblock %}

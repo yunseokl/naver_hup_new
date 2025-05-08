@@ -1,0 +1,116 @@
+{% extends "layout.html" %}
+
+{% block title %}사용자 등록 - 네이버 광고 슬롯 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i data-feather="user-plus" class="me-2"></i> 사용자 등록</h2>
+    <a href="{{ url_for('users') }}" class="btn btn-secondary">
+        <i data-feather="arrow-left" class="me-1"></i> 사용자 목록으로 돌아가기
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">새 사용자 정보 입력</h5>
+    </div>
+    <div class="card-body">
+        <form action="{{ url_for('register') }}" method="post" id="registerForm">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="username" class="form-label required-field">사용자명</label>
+                    <input type="text" class="form-control" id="username" name="username" required>
+                    <div class="form-text">로그인에 사용할 아이디입니다.</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="email" class="form-label required-field">이메일</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="password" class="form-label required-field">비밀번호</label>
+                    <input type="password" class="form-control" id="password" name="password" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="password_confirm" class="form-label required-field">비밀번호 확인</label>
+                    <input type="password" class="form-control" id="password_confirm" name="password_confirm" required>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="company_name" class="form-label required-field">회사명</label>
+                    <input type="text" class="form-control" id="company_name" name="company_name" required>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="phone" class="form-label">연락처</label>
+                    <input type="text" class="form-control" id="phone" name="phone" placeholder="예: 010-1234-5678">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="role_id" class="form-label required-field">역할</label>
+                    <select class="form-select" id="role_id" name="role_id" required>
+                        <option value="" selected disabled>역할을 선택하세요</option>
+                        {% for role in roles %}
+                        <option value="{{ role.id }}">{{ role.name }} - {{ role.description }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="parent_id" class="form-label">상위 총판</label>
+                    <select class="form-select" id="parent_id" name="parent_id" disabled>
+                        <option value="">없음</option>
+                        {% for distributor in distributors %}
+                        <option value="{{ distributor.id }}">{{ distributor.company_name }} ({{ distributor.username }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">대행사 역할 선택 시 필수입니다.</div>
+                </div>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" id="is_active" name="is_active" checked>
+                <label class="form-check-label" for="is_active">활성 상태로 설정</label>
+            </div>
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button type="button" class="btn btn-secondary" onclick="location.href='{{ url_for('users') }}'">취소</button>
+                <button type="submit" class="btn btn-primary">등록</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const roleSelect = document.getElementById('role_id');
+        const parentSelect = document.getElementById('parent_id');
+        
+        // 역할 선택에 따라 상위 총판 필드 활성화/비활성화
+        roleSelect.addEventListener('change', function() {
+            if (this.value === '3') {  // 대행사인 경우
+                parentSelect.disabled = false;
+                parentSelect.required = true;
+            } else {
+                parentSelect.disabled = true;
+                parentSelect.required = false;
+                parentSelect.value = '';
+            }
+        });
+        
+        // 비밀번호 일치 검증
+        const registerForm = document.getElementById('registerForm');
+        const passwordField = document.getElementById('password');
+        const confirmField = document.getElementById('password_confirm');
+        
+        registerForm.addEventListener('submit', function(event) {
+            if (passwordField.value !== confirmField.value) {
+                event.preventDefault();
+                alert('비밀번호가 일치하지 않습니다.');
+                confirmField.focus();
+            }
+        });
+    });
+</script>
+{% endblock %}

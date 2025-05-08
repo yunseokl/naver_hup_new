@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+
+{% block title %}네이버 광고 슬롯 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="jumbotron py-5 bg-dark rounded-3 mb-4">
+    <div class="container">
+        <h1 class="display-4">네이버 광고 슬롯 관리 시스템</h1>
+        <p class="lead">네이버 쇼핑과 플레이스 광고 슬롯을 효율적으로 관리하는 시스템입니다.</p>
+        {% if not current_user.is_authenticated %}
+        <p class="mt-4">
+            <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg">로그인</a>
+        </p>
+        {% else %}
+        <p class="mt-4">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg">대시보드</a>
+        </p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i data-feather="shopping-bag" class="me-2"></i> 쇼핑 슬롯 관리</h5>
+                <p class="card-text">네이버 쇼핑 광고 슬롯을 손쉽게 등록하고 관리할 수 있습니다.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i data-feather="map-pin" class="me-2"></i> 플레이스 슬롯 관리</h5>
+                <p class="card-text">네이버 플레이스 광고 슬롯을 체계적으로 관리할 수 있습니다.</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title"><i data-feather="users" class="me-2"></i> 대행사 및 총판 관리</h5>
+                <p class="card-text">총판과 대행사 간의 승인 프로세스를 효율적으로 처리할 수 있습니다.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">시스템 특징</h5>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><i data-feather="check" class="me-2"></i> 엑셀 파일을 통한 일괄 데이터 업로드</li>
+                <li class="list-group-item"><i data-feather="check" class="me-2"></i> 총판-대행사 간 계층적 관리 구조</li>
+                <li class="list-group-item"><i data-feather="check" class="me-2"></i> 슬롯 등록 및 승인 프로세스</li>
+                <li class="list-group-item"><i data-feather="check" class="me-2"></i> 직관적인 대시보드와 통계</li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">시스템 구성</h5>
+            </div>
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item"><i data-feather="shield" class="me-2"></i> <strong>관리자:</strong> 전체 시스템 관리 및 사용자 관리</li>
+                <li class="list-group-item"><i data-feather="briefcase" class="me-2"></i> <strong>총판:</strong> 대행사 관리 및 슬롯 승인</li>
+                <li class="list-group-item"><i data-feather="user" class="me-2"></i> <strong>대행사:</strong> 쇼핑/플레이스 슬롯 등록 및 관리</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

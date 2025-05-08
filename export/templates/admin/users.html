@@ -1,0 +1,346 @@
+{% extends "layout.html" %}
+
+{% block title %}사용자 관리 - 네이버 광고 슬롯 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i data-feather="users" class="me-2"></i> 사용자 관리</h2>
+    <div>
+        <a href="#pendingUsers" class="btn btn-warning me-2" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="pendingUsers">
+            <i data-feather="user-check" class="me-1"></i> 승인 대기
+            <span class="badge bg-danger">{{ pending_users|length if pending_users else 0 }}</span>
+        </a>
+        <a href="{{ url_for('register') }}" class="btn btn-primary">
+            <i data-feather="user-plus" class="me-1"></i> 사용자 등록
+        </a>
+    </div>
+</div>
+
+<!-- 승인 대기 중인 사용자 -->
+<div class="collapse mb-4" id="pendingUsers">
+    <div class="card border-warning">
+        <div class="card-header bg-warning text-white">
+            <h5 class="mb-0">승인 대기 중인 사용자</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>사용자명</th>
+                            <th>이메일</th>
+                            <th>회사명</th>
+                            <th>역할</th>
+                            <th>신청일</th>
+                            <th>관리</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if pending_users %}
+                            {% for user in pending_users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.company_name }}</td>
+                                <td>
+                                    <span class="badge {% if user.role.name == 'distributor' %}bg-success{% else %}bg-info{% endif %}">
+                                        {{ '총판' if user.role.name == 'distributor' else '대행사' }}
+                                    </span>
+                                </td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('approve_user', user_id=user.id, action='approve') }}" class="btn btn-outline-success">
+                                            <i data-feather="check"></i> 승인
+                                        </a>
+                                        <a href="{{ url_for('approve_user', user_id=user.id, action='reject') }}" class="btn btn-outline-danger">
+                                            <i data-feather="x"></i> 거절
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    승인 대기 중인 사용자가 없습니다.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">사용자 목록</h5>
+            <div class="input-group" style="width: 300px;">
+                <input type="text" class="form-control" placeholder="사용자 검색..." id="userSearchInput">
+                <button class="btn btn-outline-secondary" type="button" id="searchBtn">
+                    <i data-feather="search"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>사용자명</th>
+                        <th>이메일</th>
+                        <th>회사명</th>
+                        <th>역할</th>
+                        <th>상위 총판</th>
+                        <th>상태</th>
+                        <th>가입일</th>
+                        <th>마지막 로그인</th>
+                        <th>관리</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if users %}
+                        {% for user in users %}
+                        <tr>
+                            <td>{{ user.id }}</td>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.company_name }}</td>
+                            <td>
+                                <span class="badge {% if user.role.name == 'admin' %}bg-danger{% elif user.role.name == 'distributor' %}bg-success{% else %}bg-info{% endif %}">
+                                    {{ user.role.name }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if user.parent_id %}
+                                    {{ user.distributor.company_name }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if user.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                    {{ '활성' if user.is_active else '비활성' }}
+                                </span>
+                            </td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '로그인 없음' }}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-primary edit-user" data-id="{{ user.id }}">
+                                        <i data-feather="edit-2"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-outline-danger delete-user" data-id="{{ user.id }}">
+                                        <i data-feather="trash-2"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center py-4">
+                                등록된 사용자가 없습니다.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">이전</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">다음</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 사용자 삭제 확인 모달 -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteUserModalLabel">사용자 삭제 확인</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>정말로 이 사용자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.</p>
+                <p class="text-danger">삭제 시 관련된 모든 슬롯 데이터도 함께 삭제됩니다.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">삭제</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 사용자 편집 모달 -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">사용자 정보 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="edit_user_id" name="user_id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_username" class="form-label">사용자명</label>
+                            <input type="text" class="form-control" id="edit_username" name="username" readonly>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_email" class="form-label">이메일</label>
+                            <input type="email" class="form-control" id="edit_email" name="email">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_company_name" class="form-label">회사명</label>
+                            <input type="text" class="form-control" id="edit_company_name" name="company_name">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_phone" class="form-label">연락처</label>
+                            <input type="text" class="form-control" id="edit_phone" name="phone">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_role_id" class="form-label">역할</label>
+                            <select class="form-select" id="edit_role_id" name="role_id">
+                                <option value="1">관리자</option>
+                                <option value="2">총판</option>
+                                <option value="3">대행사</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="edit_parent_id" class="form-label">상위 총판</label>
+                            <select class="form-select" id="edit_parent_id" name="parent_id">
+                                <option value="">없음</option>
+                                <!-- 총판 목록은 JavaScript에서 동적으로 추가 -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="edit_is_active" name="is_active">
+                            <label class="form-check-label" for="edit_is_active">활성 상태</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_password" class="form-label">새 비밀번호 (변경 시에만 입력)</label>
+                        <input type="password" class="form-control" id="edit_password" name="password">
+                        <small class="form-text text-muted">비밀번호를 변경하지 않으려면 비워두세요.</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="saveUserBtn">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 사용자 검색 기능
+        const searchInput = document.getElementById('userSearchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        
+        searchBtn.addEventListener('click', function() {
+            const searchValue = searchInput.value.toLowerCase();
+            const tableRows = document.querySelectorAll('tbody tr');
+            
+            tableRows.forEach(row => {
+                const username = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                const email = row.querySelector('td:nth-child(3)').textContent.toLowerCase();
+                const company = row.querySelector('td:nth-child(4)').textContent.toLowerCase();
+                
+                if (username.includes(searchValue) || email.includes(searchValue) || company.includes(searchValue)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        // 사용자 삭제 모달
+        const deleteButtons = document.querySelectorAll('.delete-user');
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        let userIdToDelete = null;
+        
+        deleteButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                userIdToDelete = this.getAttribute('data-id');
+                deleteModal.show();
+            });
+        });
+        
+        confirmDeleteBtn.addEventListener('click', function() {
+            if (userIdToDelete) {
+                // AJAX로 사용자 삭제 요청 구현 필요
+                alert('사용자 삭제 기능은 아직 구현되지 않았습니다.');
+                deleteModal.hide();
+            }
+        });
+        
+        // 사용자 편집 모달
+        const editButtons = document.querySelectorAll('.edit-user');
+        const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+        const saveUserBtn = document.getElementById('saveUserBtn');
+        
+        editButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const userId = this.getAttribute('data-id');
+                // AJAX로 사용자 정보 가져오기 구현 필요
+                document.getElementById('edit_user_id').value = userId;
+                editModal.show();
+            });
+        });
+        
+        saveUserBtn.addEventListener('click', function() {
+            // 폼 유효성 검사 및 AJAX로 사용자 정보 업데이트 구현 필요
+            alert('사용자 정보 업데이트 기능은 아직 구현되지 않았습니다.');
+            editModal.hide();
+        });
+        
+        // 역할에 따라 상위 총판 필드 활성화/비활성화
+        const roleSelect = document.getElementById('edit_role_id');
+        const parentSelect = document.getElementById('edit_parent_id');
+        
+        roleSelect.addEventListener('change', function() {
+            if (this.value === '3') {  // 대행사인 경우
+                parentSelect.disabled = false;
+                parentSelect.required = true;
+            } else {
+                parentSelect.disabled = true;
+                parentSelect.required = false;
+                parentSelect.value = '';
+            }
+        });
+    });
+</script>
+{% endblock %}

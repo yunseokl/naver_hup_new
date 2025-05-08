@@ -1,0 +1,221 @@
+{% extends "layout.html" %}
+
+{% block title %}총판 대시보드 - 네이버 광고 슬롯 관리 시스템{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i data-feather="briefcase" class="me-2"></i> 총판 대시보드</h2>
+    <div>
+        <a href="{{ url_for('request_slot_quota') }}" class="btn btn-success me-2">
+            <i data-feather="plus-circle" class="me-1"></i> 슬롯 할당 요청
+        </a>
+        <a href="{{ url_for('distributor_approvals') }}" class="btn btn-warning">
+            <i data-feather="bell" class="me-1"></i> 승인 요청 
+            <span class="badge bg-danger">{{ pending_approvals }}</span>
+        </a>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">소속 대행사</h6>
+                        <h2 class="card-text">{{ agencies_count }}</h2>
+                    </div>
+                    <i data-feather="users" style="width: 48px; height: 48px;"></i>
+                </div>
+                <a href="{{ url_for('distributor_agencies') }}" class="text-white">
+                    대행사 관리 <i data-feather="chevron-right" class="ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ url_for('distributor_slots', type='shopping') }}" class="text-decoration-none">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">쇼핑 슬롯</h6>
+                            <h2 class="card-text">{{ shopping_slots }}</h2>
+                        </div>
+                        <i data-feather="shopping-bag" style="width: 48px; height: 48px;"></i>
+                    </div>
+                    <span class="text-white">쇼핑 슬롯 관리 <i data-feather="chevron-right" class="ms-1"></i></span>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ url_for('distributor_slots', type='place') }}" class="text-decoration-none">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="card-title">플레이스 슬롯</h6>
+                            <h2 class="card-text">{{ place_slots }}</h2>
+                        </div>
+                        <i data-feather="map-pin" style="width: 48px; height: 48px;"></i>
+                    </div>
+                    <span class="text-white">플레이스 슬롯 관리 <i data-feather="chevron-right" class="ms-1"></i></span>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">최근 대행사 활동</h5>
+                <a href="{{ url_for('distributor_agencies') }}" class="btn btn-sm btn-outline-primary">전체보기</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>대행사</th>
+                                <th>쇼핑 슬롯</th>
+                                <th>플레이스 슬롯</th>
+                                <th>최근 활동</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if current_user.agencies.count() > 0 %}
+                                {% for agency in current_user.agencies[:5] %}
+                                <tr>
+                                    <td>
+                                        <div>{{ agency.company_name }}</div>
+                                        <small class="text-muted">{{ agency.username }}</small>
+                                    </td>
+                                    <td>{{ agency.shopping_slots.count() }}</td>
+                                    <td>{{ agency.place_slots.count() }}</td>
+                                    <td>{{ agency.last_login.strftime('%Y-%m-%d %H:%M') if agency.last_login else '활동 없음' }}</td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        등록된 대행사가 없습니다.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">승인 대기 요청</h5>
+                <a href="{{ url_for('distributor_approvals') }}" class="btn btn-sm btn-outline-primary">전체보기</a>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>요청자</th>
+                                <th>유형</th>
+                                <th>슬롯명</th>
+                                <th>요청일</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if pending_approvals > 0 %}
+                                <!-- 여기서 실제 최근 승인 대기 요청 목록을 표시 -->
+                                {% with latest_requests = recent_agency_approvals %}
+                                    {% for approval in latest_requests %}
+                                    <tr>
+                                        <td>
+                                            {{ approval.requester.company_name }}
+                                            {% if approval.requester_id == current_user.id %}
+                                                <span class="badge bg-info">본인</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if approval.shopping_slot_id %}
+                                                <span class="badge bg-success">쇼핑</span>
+                                            {% else %}
+                                                <span class="badge bg-info">플레이스</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if approval.shopping_slot_id %}
+                                                {{ approval.shopping_slot.slot_name }}
+                                            {% else %}
+                                                {{ approval.place_slot.slot_name }}
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ approval.requested_at.strftime('%Y-%m-%d') }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                {% endwith %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-3">
+                                        승인 대기 중인 요청이 없습니다.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">슬롯 상태 요약</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table mb-0">
+                <thead>
+                    <tr>
+                        <th>슬롯 유형</th>
+                        <th>승인 대기</th>
+                        <th>승인됨</th>
+                        <th>거절됨</th>
+                        <th>총계</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><i data-feather="shopping-bag" class="me-1"></i> 쇼핑 슬롯</td>
+                        <td><span class="badge bg-warning">{{ shopping_pending|default(0) }}</span></td>
+                        <td><span class="badge bg-success">{{ shopping_approved|default(0) }}</span></td>
+                        <td><span class="badge bg-danger">{{ shopping_rejected|default(0) }}</span></td>
+                        <td><strong>{{ shopping_slots }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td><i data-feather="map-pin" class="me-1"></i> 플레이스 슬롯</td>
+                        <td><span class="badge bg-warning">{{ place_pending|default(0) }}</span></td>
+                        <td><span class="badge bg-success">{{ place_approved|default(0) }}</span></td>
+                        <td><span class="badge bg-danger">{{ place_rejected|default(0) }}</span></td>
+                        <td><strong>{{ place_slots }}</strong></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr class="table-active">
+                        <td><strong>총계</strong></td>
+                        <td><span class="badge bg-warning">{{ (shopping_pending|default(0) + place_pending|default(0)) }}</span></td>
+                        <td><span class="badge bg-success">{{ (shopping_approved|default(0) + place_approved|default(0)) }}</span></td>
+                        <td><span class="badge bg-danger">{{ (shopping_rejected|default(0) + place_rejected|default(0)) }}</span></td>
+                        <td><strong>{{ shopping_slots + place_slots }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

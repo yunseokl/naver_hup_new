@@ -1,0 +1,385 @@
+{% extends "layout.html" %}
+
+{% block title %}플레이스 데이터 입력{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>네이버 플레이스 리스트</h2>
+    <div>
+        <form action="{{ url_for('place') }}" method="post" enctype="multipart/form-data" class="d-inline-block">
+            <div class="input-group">
+                <input type="file" class="form-control" id="file" name="file" accept=".xlsx, .xls">
+                <button type="submit" class="btn btn-primary">엑셀 업로드</button>
+            </div>
+        </form>
+        <button class="btn btn-outline-secondary ms-2" data-bs-toggle="modal" data-bs-target="#addPlaceModal">
+            <i data-feather="plus"></i> 신규 추가
+        </button>
+    </div>
+</div>
+
+<!-- 검색 및 필터링 -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" placeholder="광고주ID 또는 키워드로 검색" id="searchInput">
+                    <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                        <i data-feather="search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select mb-3" id="businessTypeFilter">
+                    <option value="">업종분류 전체</option>
+                    <option value="음식점">음식점</option>
+                    <option value="카페">카페</option>
+                    <option value="기타">기타</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select mb-3" id="statusFilter">
+                    <option value="">상태 전체</option>
+                    <option value="심사중">심사중</option>
+                    <option value="ON">ON</option>
+                    <option value="OFF">OFF</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="input-group mb-3">
+                    <span class="input-group-text">운영일자</span>
+                    <input type="date" class="form-control" id="dateFilter">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 데이터 테이블 -->
+<div class="table-responsive card">
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-dark">
+            <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th>광고주ID</th>
+                <th>업종분류 코드</th>
+                <th>업종분류 명</th>
+                <th>키워드</th>
+                <th>노출수/클릭수</th>
+                <th>상태</th>
+                <th>시작일</th>
+                <th>종료일</th>
+                <th>마감일</th>
+                <th>상태정보</th>
+                <th>관리</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if place_data_list %}
+                {% for item in place_data_list %}
+                <tr>
+                    <td><input type="checkbox" class="item-select" data-id="{{ item.id }}" {% if item.select %}checked{% endif %}></td>
+                    <td>{{ item.place_id }}</td>
+                    <td>{{ item.business_category }}</td>
+                    <td>{{ item.business_type }}</td>
+                    <td>
+                        <div>{{ item.place_name }}</div>
+                        {% if item.address %}
+                        <small class="text-muted d-block">{{ item.address }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.impressions }}</td>
+                    <td>
+                        {% if item.status == "심사중" %}
+                        <span class="badge bg-warning">심사중</span>
+                        {% elif item.status == "ON" %}
+                        <span class="badge bg-success">ON</span>
+                        {% elif item.status == "OFF" %}
+                        <span class="badge bg-secondary">OFF</span>
+                        {% else %}
+                        <span class="badge bg-light text-dark">{{ item.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item.start_date }}</td>
+                    <td>{{ item.end_date }}</td>
+                    <td>{{ item.deadline_date }}</td>
+                    <td>
+                        {% if item.status_detail %}
+                        <small>{{ item.status_detail }}</small>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary edit-btn" data-id="{{ item.id }}" 
+                                    data-bs-toggle="modal" data-bs-target="#editPlaceModal">
+                                <i data-feather="edit-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                            <button type="button" class="btn btn-outline-danger delete-btn" data-id="{{ item.id }}">
+                                <i data-feather="trash-2" style="width: 16px; height: 16px;"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="12" class="text-center py-4">
+                        데이터가 없습니다. 새 데이터를 추가하거나 엑셀 파일을 업로드해주세요.
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- 액션 버튼 -->
+<div class="d-flex justify-content-between mt-3 mb-5">
+    <div>
+        <div class="btn-group">
+            <button class="btn btn-danger" id="deleteSelectedBtn" disabled>선택 삭제</button>
+            <button class="btn btn-success" id="activateSelectedBtn" disabled>선택 활성화</button>
+            <button class="btn btn-secondary" id="deactivateSelectedBtn" disabled>선택 비활성화</button>
+        </div>
+    </div>
+    <div>
+        <nav aria-label="페이지 네비게이션">
+            <ul class="pagination justify-content-end">
+                <li class="page-item disabled">
+                    <a class="page-link" href="#" tabindex="-1">이전</a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#">다음</a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+<!-- 신규 플레이스 데이터 모달 -->
+<div class="modal fade" id="addPlaceModal" tabindex="-1" aria-labelledby="addPlaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addPlaceModalLabel">네이버 플레이스 데이터 추가</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('place') }}" method="post" id="placeForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="place_id" class="form-label">광고주ID</label>
+                                <input type="text" class="form-control" id="place_id" name="place_id">
+                            </div>
+                            <div class="mb-3">
+                                <label for="business_category" class="form-label">업종분류 코드</label>
+                                <input type="text" class="form-control" id="business_category" name="business_category">
+                            </div>
+                            <div class="mb-3">
+                                <label for="business_type" class="form-label">업종분류 명</label>
+                                <input type="text" class="form-control" id="business_type" name="business_type">
+                            </div>
+                            <div class="mb-3">
+                                <label for="place_name" class="form-label">키워드 (장소명)</label>
+                                <input type="text" class="form-control" id="place_name" name="place_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="address" class="form-label">주소</label>
+                                <input type="text" class="form-control" id="address" name="address">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="status" class="form-label">상태</label>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="심사중">심사중</option>
+                                    <option value="ON">ON</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="status_detail" class="form-label">상태 상세</label>
+                                <input type="text" class="form-control" id="status_detail" name="status_detail" placeholder="예: 경쟁입찰(PCMB)">
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="start_date" class="form-label">시작일</label>
+                                        <input type="date" class="form-control" id="start_date" name="start_date">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="end_date" class="form-label">종료일</label>
+                                        <input type="date" class="form-control" id="end_date" name="end_date">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="deadline_date" class="form-label">마감일</label>
+                                <input type="date" class="form-control" id="deadline_date" name="deadline_date">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" form="placeForm" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 편집 플레이스 데이터 모달 -->
+<div class="modal fade" id="editPlaceModal" tabindex="-1" aria-labelledby="editPlaceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editPlaceModalLabel">네이버 플레이스 데이터 수정</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="{{ url_for('place') }}" method="post" id="editPlaceForm">
+                    <input type="hidden" id="edit_id" name="id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_place_id" class="form-label">광고주ID</label>
+                                <input type="text" class="form-control" id="edit_place_id" name="place_id">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_business_category" class="form-label">업종분류 코드</label>
+                                <input type="text" class="form-control" id="edit_business_category" name="business_category">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_business_type" class="form-label">업종분류 명</label>
+                                <input type="text" class="form-control" id="edit_business_type" name="business_type">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_place_name" class="form-label">키워드 (장소명)</label>
+                                <input type="text" class="form-control" id="edit_place_name" name="place_name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_address" class="form-label">주소</label>
+                                <input type="text" class="form-control" id="edit_address" name="address">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_status" class="form-label">상태</label>
+                                <select class="form-select" id="edit_status" name="status">
+                                    <option value="심사중">심사중</option>
+                                    <option value="ON">ON</option>
+                                    <option value="OFF">OFF</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_status_detail" class="form-label">상태 상세</label>
+                                <input type="text" class="form-control" id="edit_status_detail" name="status_detail" placeholder="예: 경쟁입찰(PCMB)">
+                            </div>
+                            <div class="row">
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="edit_start_date" class="form-label">시작일</label>
+                                        <input type="date" class="form-control" id="edit_start_date" name="start_date">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="mb-3">
+                                        <label for="edit_end_date" class="form-label">종료일</label>
+                                        <input type="date" class="form-control" id="edit_end_date" name="end_date">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="edit_deadline_date" class="form-label">마감일</label>
+                                <input type="date" class="form-control" id="edit_deadline_date" name="deadline_date">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="submit" form="editPlaceForm" class="btn btn-primary">저장</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 아이콘 초기화
+        feather.replace();
+        
+        // 네비게이션 링크 활성화
+        setActiveNavLink();
+        
+        // 전체 선택 체크박스
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const itemCheckboxes = document.querySelectorAll('.item-select');
+        const actionButtons = document.querySelectorAll('#deleteSelectedBtn, #activateSelectedBtn, #deactivateSelectedBtn');
+        
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                itemCheckboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+                updateButtonState();
+            });
+        }
+        
+        // 개별 체크박스 이벤트
+        itemCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateButtonState);
+        });
+        
+        // 버튼 상태 업데이트
+        function updateButtonState() {
+            const checkedCount = document.querySelectorAll('.item-select:checked').length;
+            actionButtons.forEach(button => {
+                button.disabled = checkedCount === 0;
+            });
+        }
+        
+        // 삭제 버튼 클릭 이벤트
+        const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
+        if (deleteSelectedBtn) {
+            deleteSelectedBtn.addEventListener('click', function() {
+                if (confirm('선택한 항목을 삭제하시겠습니까?')) {
+                    const selectedIds = Array.from(document.querySelectorAll('.item-select:checked'))
+                        .map(checkbox => checkbox.getAttribute('data-id'));
+                    
+                    // 여기에 실제 삭제 로직 추가
+                    console.log('Delete IDs:', selectedIds);
+                    // 삭제 후 페이지 새로고침 또는 상태 업데이트
+                }
+            });
+        }
+        
+        // 개별 삭제 버튼
+        document.querySelectorAll('.delete-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                if (confirm('이 항목을 삭제하시겠습니까?')) {
+                    // 여기에 실제 삭제 로직 추가
+                    console.log('Delete ID:', id);
+                    // 삭제 후 페이지 새로고침 또는 상태 업데이트
+                }
+            });
+        });
+        
+        // 폼 유효성 검증
+        setupFormValidation('placeForm');
+        setupFormValidation('editPlaceForm');
+    });
+</script>
+{% endblock %}
