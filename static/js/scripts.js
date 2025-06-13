@@ -29,7 +29,7 @@ function setupFileInput() {
             const fileName = e.target.files[0]?.name;
             const label = input.nextElementSibling;
             
-            if (label && label.classList.contains('form-text')) {
+            if (label && label.classList && label.classList.contains('form-text')) {
                 if (fileName) {
                     const fileInfo = document.createElement('div');
                     fileInfo.classList.add('mt-2', 'small', 'text-muted');
@@ -37,7 +37,7 @@ function setupFileInput() {
                     
                     // 이전 파일명 정보 삭제
                     const prevInfo = label.nextElementSibling;
-                    if (prevInfo && prevInfo.classList.contains('text-muted')) {
+                    if (prevInfo && prevInfo.classList && prevInfo.classList.contains('text-muted')) {
                         prevInfo.remove();
                     }
                     
