@@ -1,54 +1,102 @@
 # 네이버 광고 슬롯 관리 시스템
 
-## 프로젝트 개요
-네이버 쇼핑 및 플레이스 광고 슬롯을 효율적으로 관리하기 위한 웹 애플리케이션입니다. 관리자, 총판, 대행사의 계층 구조를 통해 슬롯 할당 및 관리를 간소화하였습니다.
+Flask 기반의 네이버 쇼핑 및 플레이스 광고 슬롯 관리 웹 애플리케이션입니다.
 
 ## 주요 기능
-- 사용자 관리 (관리자/총판/대행사)
-- 쇼핑 슬롯 관리
-- 플레이스 슬롯 관리
-- 슬롯 승인 워크플로우
-- 정산 관리
+
+### 사용자 관리
+- 3단계 계층 구조 (관리자 → 총판 → 대행사)
+- 사용자 등록 및 승인 시스템
+- 역할별 접근 권한 관리
+
+### 슬롯 관리
+- 쇼핑 슬롯 등록 및 관리
+- 플레이스 슬롯 등록 및 관리
 - 엑셀 파일 일괄 업로드/다운로드
-- 환불 시스템
+- 슬롯 상태 관리 (empty → pending → approved → live)
 
-## 시스템 요구사항
-- Python 3.9 이상
-- Flask 웹 프레임워크
-- PostgreSQL 데이터베이스
-- 기타 requirements.txt에 명시된 패키지
+### 승인 워크플로우
+- 계층별 승인 프로세스
+- 슬롯 생성/수정/삭제 승인
+- 일괄 승인 기능
 
-## 설치 방법
-1. 의존성 설치:
-```
+### 정산 시스템
+- 자동 정산 계산 (30원 × 슬롯1개 × 기간)
+- 정산 내역 관리
+- 환불 처리 시스템
+
+## 기술 스택
+- **Backend**: Python Flask
+- **Database**: PostgreSQL
+- **Frontend**: Bootstrap 5, Feather Icons
+- **Authentication**: Flask-Login
+- **File Processing**: openpyxl, pandas
+
+## 설치 및 실행
+
+### 1. 의존성 설치
+```bash
 pip install -r requirements.txt
 ```
 
-2. 데이터베이스 연결 설정:
-DATABASE_URL 환경 변수 설정 (PostgreSQL 연결 문자열)
-
-3. 애플리케이션 실행:
+### 2. 환경 변수 설정
+```bash
+export DATABASE_URL="postgresql://username:password@localhost/database_name"
+export SESSION_SECRET="your-secret-key"
 ```
+
+### 3. 애플리케이션 실행
+```bash
+# 개발 환경
+python main.py
+
+# 프로덕션 환경
 gunicorn --bind 0.0.0.0:5000 main:app
 ```
 
-## 관리자 계정
-- 기본 관리자 계정: admin / adminpassword
+## 기본 계정
+- **관리자**: admin / adminpassword
 
 ## 프로젝트 구조
-- `app.py`: 애플리케이션 라우팅 및 주요 비즈니스 로직
-- `main.py`: 애플리케이션 진입점
-- `models.py`: 데이터베이스 모델
-- `templates/`: HTML 템플릿
-- `static/`: 정적 파일 (CSS, JS, 이미지)
-- `uploads/`: 업로드된 파일 저장 디렉토리
-- `downloads/`: 다운로드용 파일 저장 디렉토리
-
-## 정산 계산 방식
-정산 계산은 다음 공식을 사용합니다:
 ```
-정산 금액 = 30원 × 슬롯 1개(100유입) × 기간(일수)
+├── app.py                 # 메인 애플리케이션
+├── main.py               # 진입점
+├── models.py             # 데이터베이스 모델
+├── templates/            # HTML 템플릿
+│   ├── admin/           # 관리자 페이지
+│   ├── distributor/     # 총판 페이지
+│   ├── agency/          # 대행사 페이지
+│   └── auth/            # 인증 페이지
+├── static/              # 정적 파일
+│   ├── css/
+│   ├── js/
+│   └── img/
+├── uploads/             # 업로드 파일
+└── downloads/           # 다운로드 파일
 ```
 
-## 슬롯 상태 흐름
-- empty → pending → approved → live → inactive/refunded
+## 데이터베이스 모델
+- **User**: 사용자 정보 및 역할
+- **ShoppingSlot**: 쇼핑 슬롯 데이터
+- **PlaceSlot**: 플레이스 슬롯 데이터
+- **SlotApproval**: 승인 요청
+- **Settlement**: 정산 정보
+- **SlotRefundRequest**: 환불 요청
+
+## 워크플로우
+
+### 슬롯 등록 프로세스
+1. 총판이 빈 슬롯 생성
+2. 대행사가 슬롯 정보 입력
+3. 계층별 승인 진행
+4. 승인 완료 시 'live' 상태로 변경
+5. 자동 정산 처리
+
+### 환불 프로세스
+1. 사용자가 환불 요청
+2. 관리자 승인
+3. 남은 기간 비례 환불 계산
+4. 정산 내역 업데이트
+
+## 라이센스
+이 프로젝트는 MIT 라이센스를 따릅니다.
