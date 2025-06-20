@@ -291,7 +291,7 @@ def register():
     
     # 역할 목록 조회 (관리자 제외)
     roles = Role.query.filter(Role.name != 'admin').all()
-    return render_template('register.html', roles=roles)
+    return render_template('auth/register.html', roles=roles)
 
 # 메인 페이지 라우트
 @app.route('/')
