@@ -19,6 +19,14 @@ from wtforms import StringField, PasswordField, TextAreaField, SelectField, Bool
 from wtforms.validators import DataRequired, Email, Length
 from email_validator import validate_email, EmailNotValidError
 
+# 폼 클래스 정의
+class RegistrationForm(FlaskForm):
+    username = StringField('사용자명', validators=[DataRequired(), Length(min=4, max=20)])
+    email = StringField('이메일', validators=[DataRequired(), Email()])
+    company_name = StringField('회사명', validators=[DataRequired(), Length(max=100)])
+    password = PasswordField('비밀번호', validators=[DataRequired(), Length(min=6)])
+    role_id = SelectField('역할', coerce=int, validators=[DataRequired()])
+
 # 로깅 설정
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -243,12 +251,19 @@ def register():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     
-    if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        company_name = request.form.get('company_name')
-        password = request.form.get('password')
-        role_id = request.form.get('role_id')
+    # 역할 목록 조회 (관리자 제외)
+    roles = Role.query.filter(Role.name != 'admin').all()
+    
+    # 폼 생성
+    form = RegistrationForm()
+    form.role_id.choices = [(role.id, role.description or role.name) for role in roles]
+    
+    if form.validate_on_submit():
+        username = form.username.data
+        email = form.email.data
+        company_name = form.company_name.data
+        password = form.password.data
+        role_id = form.role_id.data
         
         # 중복 사용자 확인
         existing_user = User.query.filter(
@@ -257,14 +272,6 @@ def register():
         
         if existing_user:
             flash('이미 사용 중인 사용자 이름 또는 이메일입니다.', 'danger')
-            return redirect(url_for('register'))
-        
-        # 이메일 형식 검증
-        try:
-            valid = validate_email(email)
-            email = valid.email
-        except EmailNotValidError:
-            flash('유효하지 않은 이메일 주소입니다.', 'danger')
             return redirect(url_for('register'))
         
         # 역할 확인 (대행사 또는 총판만 허용)
@@ -289,9 +296,7 @@ def register():
         flash('회원가입이 완료되었습니다. 관리자 승인 후 로그인 가능합니다.', 'success')
         return redirect(url_for('login'))
     
-    # 역할 목록 조회 (관리자 제외)
-    roles = Role.query.filter(Role.name != 'admin').all()
-    return render_template('auth/register.html', roles=roles)
+    return render_template('auth/register.html', form=form)
 
 # 메인 페이지 라우트
 @app.route('/')
