@@ -126,8 +126,8 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <span class="badge {% if user.is_active %}bg-success{% else %}bg-secondary{% endif %}">
-                                    {{ '활성' if user.is_active else '비활성' }}
+                                <span class="badge {% if user.approved %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ '승인완료' if user.approved else '승인대기' }}
                                 </span>
                             </td>
                             <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
