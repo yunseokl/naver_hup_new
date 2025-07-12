@@ -356,6 +356,12 @@ def admin_dashboard():
     # 환불 요청 통계
     pending_refunds = SlotRefundRequest.query.filter_by(status='pending').count()
     
+    # 최신 사용자 5명
+    recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
+    
+    # 최근 승인 요청 5개
+    recent_approvals = SlotApproval.query.order_by(SlotApproval.created_at.desc()).limit(5).all()
+    
     return render_template('admin/dashboard.html',
                           users_count=users_count,
                           distributors_count=distributors_count,
@@ -364,7 +370,9 @@ def admin_dashboard():
                           shopping_slots=shopping_slots,
                           place_slots=place_slots,
                           pending_settlements=pending_settlements,
-                          pending_refunds=pending_refunds)
+                          pending_refunds=pending_refunds,
+                          recent_users=recent_users,
+                          recent_approvals=recent_approvals)
 
 @app.route('/admin/users')
 @admin_required
