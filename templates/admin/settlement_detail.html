@@ -169,49 +169,26 @@
                     <tr>
                         <td>{{ item.id }}</td>
                         <td>
-                            {% if item.shopping_slot %}
+                            {% if item.slot_type == 'shopping' %}
                                 쇼핑
                             {% else %}
                                 플레이스
                             {% endif %}
                         </td>
+                        <td>{{ item.slot_name }}</td>
                         <td>
-                            {% if item.shopping_slot %}
-                                {{ item.shopping_slot.slot_name }}
+                            {% if item.start_date and item.end_date %}
+                                {{ item.start_date.strftime('%Y-%m-%d') }} ~ {{ item.end_date.strftime('%Y-%m-%d') }}
                             {% else %}
-                                {{ item.place_slot.slot_name }}
+                                -
                             {% endif %}
                         </td>
                         <td>
-                            {% if item.shopping_slot %}
-                                {% if item.shopping_slot.start_date and item.shopping_slot.end_date %}
-                                    {{ item.shopping_slot.start_date.strftime('%Y-%m-%d') }} ~ {{ item.shopping_slot.end_date.strftime('%Y-%m-%d') }}
-                                {% else %}
-                                    -
-                                {% endif %}
+                            {% if item.start_date and item.end_date %}
+                                {% set days = (item.end_date - item.start_date).days + 1 %}
+                                {{ days }}일
                             {% else %}
-                                {% if item.place_slot.start_date and item.place_slot.end_date %}
-                                    {{ item.place_slot.start_date.strftime('%Y-%m-%d') }} ~ {{ item.place_slot.end_date.strftime('%Y-%m-%d') }}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if item.shopping_slot %}
-                                {% if item.shopping_slot.start_date and item.shopping_slot.end_date %}
-                                    {% set days = (item.shopping_slot.end_date - item.shopping_slot.start_date).days + 1 %}
-                                    {{ days }}일
-                                {% else %}
-                                    -
-                                {% endif %}
-                            {% else %}
-                                {% if item.place_slot.start_date and item.place_slot.end_date %}
-                                    {% set days = (item.place_slot.end_date - item.place_slot.start_date).days + 1 %}
-                                    {{ days }}일
-                                {% else %}
-                                    -
-                                {% endif %}
+                                -
                             {% endif %}
                         </td>
                         <td>100</td>
