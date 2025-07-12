@@ -124,14 +124,16 @@
                 {% if settlement.status == 'pending' %}
                 <div class="row mt-3">
                     <div class="col-md-6">
-                        <form method="POST" action="{{ url_for('admin_complete_settlement', settlement_id=settlement.id) }}">
+                        <form method="POST" action="{{ url_for('admin_settlement_action', settlement_id=settlement.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="complete">
                             <button type="submit" class="btn btn-success w-100">정산 완료 처리</button>
                         </form>
                     </div>
                     <div class="col-md-6">
-                        <form method="POST" action="{{ url_for('admin_cancel_settlement', settlement_id=settlement.id) }}">
+                        <form method="POST" action="{{ url_for('admin_settlement_action', settlement_id=settlement.id) }}">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="action" value="cancel">
                             <button type="submit" class="btn btn-danger w-100">정산 취소</button>
                         </form>
                     </div>
