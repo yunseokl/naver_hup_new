@@ -360,7 +360,7 @@ def admin_dashboard():
     recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
     
     # 최근 승인 요청 5개
-    recent_approvals = SlotApproval.query.order_by(SlotApproval.created_at.desc()).limit(5).all()
+    recent_approvals = SlotApproval.query.order_by(SlotApproval.requested_at.desc()).limit(5).all()
     
     return render_template('admin/dashboard.html',
                           users_count=users_count,

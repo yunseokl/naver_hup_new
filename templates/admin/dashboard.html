@@ -216,7 +216,7 @@
                             {% if recent_approvals %}
                                 {% for approval in recent_approvals %}
                                 <tr>
-                                    <td>{{ approval.user.username if approval.user else '-' }}</td>
+                                    <td>{{ approval.requester.username if approval.requester else '-' }}</td>
                                     <td>
                                         {% if approval.shopping_slot %}
                                             <span class="badge bg-success">쇼핑</span>
@@ -226,7 +226,7 @@
                                             <span class="badge bg-secondary">기타</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{ approval.created_at.strftime('%Y-%m-%d') if approval.created_at else '-' }}</td>
+                                    <td>{{ approval.requested_at.strftime('%Y-%m-%d') if approval.requested_at else '-' }}</td>
                                     <td>
                                         {% if approval.status == 'pending' %}
                                             <span class="badge bg-warning">대기중</span>
