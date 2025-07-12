@@ -386,6 +386,82 @@ def users():
     
     return render_template('admin/users.html', users=users, pending_users=pending_users)
 
+@app.route('/admin/register', methods=['GET', 'POST'])
+@admin_required
+def admin_register():
+    """관리자용 사용자 등록 페이지"""
+    if request.method == 'POST':
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        password_confirm = request.form.get('password_confirm')
+        company_name = request.form.get('company_name')
+        phone = request.form.get('phone')
+        role_id = request.form.get('role_id')
+        parent_id = request.form.get('parent_id')
+        is_active = request.form.get('is_active') == 'on'
+        
+        # 유효성 검사
+        if not all([username, email, password, company_name, role_id]):
+            flash('필수 정보를 모두 입력해주세요.', 'danger')
+            return redirect(url_for('admin_register'))
+        
+        if password != password_confirm:
+            flash('비밀번호가 일치하지 않습니다.', 'danger')
+            return redirect(url_for('admin_register'))
+        
+        # 이메일/사용자명 중복 확인
+        if User.query.filter_by(username=username).first():
+            flash('이미 사용 중인 아이디입니다.', 'danger')
+            return redirect(url_for('admin_register'))
+        
+        if User.query.filter_by(email=email).first():
+            flash('이미 사용 중인 이메일입니다.', 'danger')
+            return redirect(url_for('admin_register'))
+        
+        # 역할 확인
+        role = Role.query.get(role_id)
+        if not role:
+            flash('잘못된 역할입니다.', 'danger')
+            return redirect(url_for('admin_register'))
+        
+        # 대행사인 경우 총판 필수 체크
+        if role.name == 'agency' and not parent_id:
+            flash('대행사는 소속 총판을 선택해야 합니다.', 'warning')
+            return redirect(url_for('admin_register'))
+        
+        # 총판인 경우 parent_id를 None으로 설정
+        if role.name == 'distributor':
+            parent_id = None
+        
+        # 새 사용자 생성
+        user = User(
+            username=username, 
+            email=email, 
+            company_name=company_name, 
+            phone=phone, 
+            role_id=role_id, 
+            parent_id=parent_id if parent_id else None,
+            is_active=is_active  # 관리자는 즉시 활성화 가능
+        )
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        flash(f'{username} 사용자가 성공적으로 등록되었습니다.', 'success')
+        return redirect(url_for('users'))
+    
+    # 역할 및 총판 리스트 가져오기 (관리자 역할 제외)
+    roles = Role.query.filter(Role.name != 'admin').all()
+    distributors = User.query.join(Role).filter(
+        Role.name == 'distributor',
+        User.is_active == True
+    ).all()
+    
+    form = FlaskForm()
+    return render_template('admin/register.html', form=form, roles=roles, distributors=distributors)
+
 @app.route('/admin/approve-user/<int:user_id>/<action>')
 @admin_required
 def approve_user(user_id, action):

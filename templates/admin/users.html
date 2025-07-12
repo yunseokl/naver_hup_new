@@ -10,7 +10,7 @@
             <i data-feather="user-check" class="me-1"></i> 승인 대기
             <span class="badge bg-danger">{{ pending_users|length if pending_users else 0 }}</span>
         </a>
-        <a href="{{ url_for('register') }}" class="btn btn-primary">
+        <a href="{{ url_for('admin_register') }}" class="btn btn-primary">
             <i data-feather="user-plus" class="me-1"></i> 사용자 등록
         </a>
     </div>
