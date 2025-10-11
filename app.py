@@ -10,7 +10,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask import g, current_app
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.orm import DeclarativeBase, joinedload, selectinload
 from sqlalchemy import or_
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from functools import wraps
@@ -414,11 +414,13 @@ def admin_dashboard():
     # 환불 요청 통계
     pending_refunds = SlotRefundRequest.query.filter_by(status='pending').count()
     
-    # 최신 사용자 5명
-    recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
+    # 최신 사용자 5명 (role 정보 eager load)
+    recent_users = User.query.options(joinedload(User.role)).order_by(User.created_at.desc()).limit(5).all()
     
-    # 최근 승인 요청 5개
-    recent_approvals = SlotApproval.query.order_by(SlotApproval.requested_at.desc()).limit(5).all()
+    # 최근 승인 요청 5개 (requester 정보 eager load)
+    recent_approvals = SlotApproval.query.options(
+        joinedload(SlotApproval.requester).joinedload(User.role)
+    ).order_by(SlotApproval.requested_at.desc()).limit(5).all()
     
     return render_template('admin/dashboard.html',
                           users_count=users_count,
@@ -436,11 +438,17 @@ def admin_dashboard():
 @admin_required
 def users():
     """사용자 관리 페이지"""
-    # 모든 활성화된 사용자 조회
-    users = User.query.filter_by(is_active=True).all()
+    # 모든 활성화된 사용자 조회 (role과 distributor 정보 eager load)
+    users = User.query.options(
+        joinedload(User.role),
+        joinedload(User.distributor)
+    ).filter_by(is_active=True).all()
     
-    # 승인 대기 중인 사용자 조회
-    pending_users = User.query.filter_by(is_active=False).all()
+    # 승인 대기 중인 사용자 조회 (role과 distributor 정보 eager load)
+    pending_users = User.query.options(
+        joinedload(User.role),
+        joinedload(User.distributor)
+    ).filter_by(is_active=False).all()
     
     return render_template('admin/users.html', users=users, pending_users=pending_users)
 
@@ -549,7 +557,11 @@ def admin_approvals():
     """관리자용 승인 요청 관리 페이지"""
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    pagination = SlotApproval.query.filter_by(status='pending').order_by(
+    pagination = SlotApproval.query.options(
+        joinedload(SlotApproval.requester).joinedload(User.role),
+        joinedload(SlotApproval.shopping_slot),
+        joinedload(SlotApproval.place_slot)
+    ).filter_by(status='pending').order_by(
         SlotApproval.requested_at.desc()
     ).paginate(page=page, per_page=per_page, error_out=False)
     approvals = pagination.items
@@ -568,8 +580,10 @@ def admin_shopping_slots():
     slot_type = request.args.get('slot_type', '')
     search = request.args.get('search', '')
     
-    # 기본 쿼리
-    query = ShoppingSlot.query.join(User)
+    # 기본 쿼리 (user 정보 eager load)
+    query = ShoppingSlot.query.options(
+        joinedload(ShoppingSlot.user).joinedload(User.role)
+    ).join(User)
     
     # 필터 적용
     if owner_type:
@@ -629,8 +643,10 @@ def admin_place_slots():
     slot_type = request.args.get('slot_type', '')
     search = request.args.get('search', '')
     
-    # 기본 쿼리
-    query = PlaceSlot.query.join(User)
+    # 기본 쿼리 (user 정보 eager load)
+    query = PlaceSlot.query.options(
+        joinedload(PlaceSlot.user).joinedload(User.role)
+    ).join(User)
     
     # 필터 적용
     if owner_type:
@@ -1252,10 +1268,12 @@ def admin_approve_request(approval_id, action):
 @distributor_required
 def distributor_dashboard():
     """총판 대시보드"""
+    # agencies는 lazy='dynamic'이므로 직접 조회
     agencies_count = current_user.agencies.count()
     
-    # 이 총판에 속한 대행사들의 ID 리스트 (총판 자신 포함)
-    agency_ids = [agency.id for agency in current_user.agencies]
+    # 이 총판에 속한 대행사들의 ID 리스트 (총판 자신 포함) - 한 번만 조회
+    agencies_list = current_user.agencies.all()
+    agency_ids = [agency.id for agency in agencies_list]
     user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID도 포함
     
     # 이 총판과 소속 대행사들의 슬롯 통계
@@ -1897,26 +1915,38 @@ def export_slots():
 @distributor_required
 def distributor_approvals():
     """총판용 승인 요청 관리 페이지"""
-    # 이 총판에 속한 대행사들의 ID 리스트
-    agency_ids = [agency.id for agency in current_user.agencies]
+    # agencies는 lazy='dynamic'이므로 직접 조회 - 한 번만 조회
+    agencies_list = current_user.agencies.all()
     
-    # 1. 대행사들로부터의 승인 요청
-    agency_approvals = SlotApproval.query.filter(
+    # 이 총판에 속한 대행사들의 ID 리스트
+    agency_ids = [agency.id for agency in agencies_list]
+    
+    # 1. 대행사들로부터의 승인 요청 (requester, shopping_slot, place_slot eager load)
+    agency_approvals = SlotApproval.query.options(
+        joinedload(SlotApproval.requester),
+        joinedload(SlotApproval.shopping_slot),
+        joinedload(SlotApproval.place_slot)
+    ).filter(
         SlotApproval.status == 'pending',
         SlotApproval.requester_id.in_(agency_ids)
-    ).all()
+    ).all() if agency_ids else []
     
     # 2. 총판 자신의 슬롯에 대한 승인 요청 (관리자만 승인 가능)
-    distributor_approvals = SlotApproval.query.filter(
+    distributor_approvals = SlotApproval.query.options(
+        joinedload(SlotApproval.shopping_slot),
+        joinedload(SlotApproval.place_slot)
+    ).filter(
         SlotApproval.status == 'pending',
         SlotApproval.requester_id == current_user.id  # 총판 본인이 요청자
     ).all()
     
-    # 3. 슬롯 할당량 요청 정보
-    quota_requests = SlotQuotaRequest.query.filter(
+    # 3. 슬롯 할당량 요청 정보 (requester eager load)
+    quota_requests = SlotQuotaRequest.query.options(
+        joinedload(SlotQuotaRequest.requester)
+    ).filter(
         SlotQuotaRequest.status == 'pending',
         SlotQuotaRequest.requester_id.in_(agency_ids)
-    ).all()
+    ).all() if agency_ids else []
     
     return render_template('distributor/approvals.html', 
                           agency_approvals=agency_approvals,
@@ -1929,8 +1959,11 @@ def distributor_approve_quota(request_id):
     """총판의 슬롯 할당량 요청 승인/거절 처리"""
     quota_request = SlotQuotaRequest.query.get_or_404(request_id)
     
+    # agencies는 lazy='dynamic'이므로 직접 조회 - 한 번만 조회
+    agencies_list = current_user.agencies.all()
+    
     # 이 승인 요청이 자신의 대행사에서 온 것인지 확인
-    agency_ids = [agency.id for agency in current_user.agencies]
+    agency_ids = [agency.id for agency in agencies_list]
     if quota_request.requester_id not in agency_ids:
         flash('이 요청을 처리할 권한이 없습니다.', 'danger')
         return redirect(url_for('distributor_approvals'))
@@ -3965,7 +3998,10 @@ def admin_settlements():
     """관리자 정산 관리 페이지"""
     page = request.args.get('page', 1, type=int)
     per_page = 20
-    pagination = Settlement.query.order_by(Settlement.created_at.desc()).paginate(
+    pagination = Settlement.query.options(
+        joinedload(Settlement.user).joinedload(User.role),
+        joinedload(Settlement.admin)
+    ).order_by(Settlement.created_at.desc()).paginate(
         page=page, per_page=per_page, error_out=False
     )
     settlements = pagination.items
@@ -4140,15 +4176,20 @@ def create_settlement():
 @admin_required
 def admin_settlement_detail(settlement_id):
     """관리자 정산 상세 페이지"""
-    settlement = Settlement.query.get_or_404(settlement_id)
+    settlement = Settlement.query.options(
+        joinedload(Settlement.user),
+        joinedload(Settlement.admin)
+    ).get_or_404(settlement_id)
     
-    # 정산 항목 조회 (처리된 데이터 준비)
+    # 정산 항목 조회 (처리된 데이터 준비) - eager loading으로 N+1 쿼리 방지
     processed_items = []
     
-    # 쇼핑 슬롯 정산 항목
-    shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
+    # 쇼핑 슬롯 정산 항목 (shopping_slot eager load)
+    shopping_items = SettlementItem.query.options(
+        joinedload(SettlementItem.shopping_slot)
+    ).filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
     for item in shopping_items:
-        slot = ShoppingSlot.query.get(item.shopping_slot_id)
+        slot = item.shopping_slot
         if slot:
             # 데이터를 딕셔너리로 구성
             processed_item = {
@@ -4168,10 +4209,12 @@ def admin_settlement_detail(settlement_id):
             }
             processed_items.append(processed_item)
     
-    # 플레이스 슬롯 정산 항목
-    place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
+    # 플레이스 슬롯 정산 항목 (place_slot eager load)
+    place_items = SettlementItem.query.options(
+        joinedload(SettlementItem.place_slot)
+    ).filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
     for item in place_items:
-        slot = PlaceSlot.query.get(item.place_slot_id)
+        slot = item.place_slot
         if slot:
             # 데이터를 딕셔너리로 구성
             processed_item = {
@@ -4276,19 +4319,24 @@ def distributor_settlements():
 @distributor_required
 def distributor_settlement_detail(settlement_id):
     """총판 정산 상세 페이지"""
-    settlement = Settlement.query.get_or_404(settlement_id)
+    settlement = Settlement.query.options(
+        joinedload(Settlement.user),
+        joinedload(Settlement.admin)
+    ).get_or_404(settlement_id)
     
     # 접근 권한 검증 (본인 또는 관리 중인 대행사의 정산만 볼 수 있음)
     if settlement.user_id != current_user.id and settlement.user.parent_id != current_user.id:
         abort(403)
     
-    # 정산 항목 조회 (처리된 데이터 준비)
+    # 정산 항목 조회 (처리된 데이터 준비) - eager loading으로 N+1 쿼리 방지
     processed_items = []
     
-    # 쇼핑 슬롯 정산 항목
-    shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
+    # 쇼핑 슬롯 정산 항목 (shopping_slot eager load)
+    shopping_items = SettlementItem.query.options(
+        joinedload(SettlementItem.shopping_slot)
+    ).filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
     for item in shopping_items:
-        slot = ShoppingSlot.query.get(item.shopping_slot_id)
+        slot = item.shopping_slot
         if slot:
             # 데이터를 딕셔너리로 구성
             processed_item = {
@@ -4308,10 +4356,12 @@ def distributor_settlement_detail(settlement_id):
             }
             processed_items.append(processed_item)
     
-    # 플레이스 슬롯 정산 항목
-    place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
+    # 플레이스 슬롯 정산 항목 (place_slot eager load)
+    place_items = SettlementItem.query.options(
+        joinedload(SettlementItem.place_slot)
+    ).filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
     for item in place_items:
-        slot = PlaceSlot.query.get(item.place_slot_id)
+        slot = item.place_slot
         if slot:
             # 데이터를 딕셔너리로 구성
             processed_item = {
@@ -4358,19 +4408,24 @@ def agency_settlements():
 @agency_required
 def agency_settlement_detail(settlement_id):
     """대행사 정산 상세 페이지"""
-    settlement = Settlement.query.get_or_404(settlement_id)
+    settlement = Settlement.query.options(
+        joinedload(Settlement.user),
+        joinedload(Settlement.admin)
+    ).get_or_404(settlement_id)
     
     # 접근 권한 검증 (본인의 정산만 볼 수 있음)
     if settlement.user_id != current_user.id:
         abort(403)
     
-    # 정산 항목 조회 (처리된 데이터 준비)
+    # 정산 항목 조회 (처리된 데이터 준비) - eager loading으로 N+1 쿼리 방지
     processed_items = []
     
-    # 쇼핑 슬롯 정산 항목
-    shopping_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
+    # 쇼핑 슬롯 정산 항목 (shopping_slot eager load)
+    shopping_items = SettlementItem.query.options(
+        joinedload(SettlementItem.shopping_slot)
+    ).filter_by(settlement_id=settlement_id).filter(SettlementItem.shopping_slot_id != None).all()
     for item in shopping_items:
-        slot = ShoppingSlot.query.get(item.shopping_slot_id)
+        slot = item.shopping_slot
         if slot:
             # 데이터를 딕셔너리로 구성
             processed_item = {
@@ -4390,10 +4445,12 @@ def agency_settlement_detail(settlement_id):
             }
             processed_items.append(processed_item)
     
-    # 플레이스 슬롯 정산 항목
-    place_items = SettlementItem.query.filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
+    # 플레이스 슬롯 정산 항목 (place_slot eager load)
+    place_items = SettlementItem.query.options(
+        joinedload(SettlementItem.place_slot)
+    ).filter_by(settlement_id=settlement_id).filter(SettlementItem.place_slot_id != None).all()
     for item in place_items:
-        slot = PlaceSlot.query.get(item.place_slot_id)
+        slot = item.place_slot
         if slot:
             # 데이터를 딕셔너리로 구성
             processed_item = {
