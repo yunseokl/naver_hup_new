@@ -614,12 +614,14 @@ def admin_create_shopping_slot():
         
         # 날짜 처리
         start_date = None
-        if request.form.get('start_date'):
-            start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        start_date_str = request.form.get('start_date')
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             
         end_date = None
-        if request.form.get('end_date'):
-            end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        end_date_str = request.form.get('end_date')
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
         
         # 쇼핑 슬롯 생성
         slot = ShoppingSlot(
@@ -659,12 +661,14 @@ def admin_create_place_slot():
         
         # 날짜 처리
         start_date = None
-        if request.form.get('start_date'):
-            start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+        start_date_str = request.form.get('start_date')
+        if start_date_str:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             
         end_date = None
-        if request.form.get('end_date'):
-            end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+        end_date_str = request.form.get('end_date')
+        if end_date_str:
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
         
         # 플레이스 슬롯 생성
         slot = PlaceSlot(
@@ -706,11 +710,13 @@ def admin_edit_shopping_slot(slot_id):
             slot.notes = request.form.get('notes', '')
             
             # 날짜 처리
-            if request.form.get('start_date'):
-                slot.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+            start_date_str = request.form.get('start_date')
+            if start_date_str:
+                slot.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
                 
-            if request.form.get('end_date'):
-                slot.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+            end_date_str = request.form.get('end_date')
+            if end_date_str:
+                slot.end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
             
             # 슬롯 상세 정보 업데이트
             if request.form.get('product_name'):
@@ -767,14 +773,17 @@ def admin_edit_place_slot(slot_id):
             slot.notes = request.form.get('notes', '')
             
             # 날짜 처리
-            if request.form.get('start_date'):
-                slot.start_date = datetime.strptime(request.form.get('start_date'), '%Y-%m-%d').date()
+            start_date_str = request.form.get('start_date')
+            if start_date_str:
+                slot.start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
                 
-            if request.form.get('end_date'):
-                slot.end_date = datetime.strptime(request.form.get('end_date'), '%Y-%m-%d').date()
+            end_date_str = request.form.get('end_date')
+            if end_date_str:
+                slot.end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
                 
-            if request.form.get('deadline_date'):
-                slot.deadline_date = datetime.strptime(request.form.get('deadline_date'), '%Y-%m-%d').date()
+            deadline_date_str = request.form.get('deadline_date')
+            if deadline_date_str:
+                slot.deadline_date = datetime.strptime(deadline_date_str, '%Y-%m-%d').date()
             
             # 슬롯 상세 정보 업데이트
             if request.form.get('place_name'):
@@ -871,6 +880,9 @@ def admin_bulk_approve():
     """일괄 승인/거절 처리"""
     # 요청 데이터 가져오기
     data = request.json
+    if not data:
+        return jsonify({'success': False, 'message': '요청 데이터가 없습니다.'}), 400
+        
     approval_ids = data.get('approval_ids', [])
     action = data.get('action', 'approve')  # 'approve' 또는 'reject'
     
@@ -950,7 +962,6 @@ def admin_approve_request(approval_id, action):
                 
                 # 기본 정보 로깅
                 app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {unit_price}원 × {daily_visitors}유입 = {total_price}원")
-                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
                 
                 # 정산 자동 생성
                 today = datetime.now().date()
@@ -976,8 +987,8 @@ def admin_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=existing_settlement.id,
                         shopping_slot_id=slot.id,
-                        slot_price=slot_reward,  # 100유입 리워드로 고정
-                        admin_price=slot.admin_price,
+                        slot_price=total_price,  # 계산된 총 가격
+                        admin_price=slot.admin_price or 0,
                         settlement_price=total_price
                     )
                     db.session.add(settlement_item)
@@ -1012,8 +1023,8 @@ def admin_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=new_settlement.id,
                         shopping_slot_id=slot.id,
-                        slot_price=slot_reward,  # 100유입 리워드로 고정
-                        admin_price=slot.admin_price,
+                        slot_price=total_price,  # 계산된 총 가격
+                        admin_price=slot.admin_price or 0,
                         settlement_price=total_price
                     )
                     db.session.add(settlement_item)
@@ -1030,6 +1041,8 @@ def admin_approve_request(approval_id, action):
             # 정산 자동 처리 - 슬롯당 100유입 리워드로 고정
             if slot.start_date and slot.end_date:
                 # 시작일과 종료일 사이의 일수 계산 (양 끝 포함)
+                days = (slot.end_date - slot.start_date).days + 1
+                
                 # 30원 × 슬롯1개(100유입) × 기간으로 계산
                 daily_visitors = 100  # 일일 100유입
                 unit_price = 30  # 고정 단가 (30원)
@@ -1038,9 +1051,6 @@ def admin_approve_request(approval_id, action):
                 
                 # 기본 정보 로깅
                 app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {unit_price}원 × {daily_visitors}유입 = {total_price}원")
-                # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
-                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
                 
                 # 정산 자동 생성
                 today = datetime.now().date()
@@ -1066,8 +1076,8 @@ def admin_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=existing_settlement.id,
                         place_slot_id=slot.id,
-                        slot_price=slot_reward,  # 100유입 리워드로 고정
-                        admin_price=slot.admin_price,
+                        slot_price=total_price,  # 계산된 총 가격
+                        admin_price=slot.admin_price or 0,
                         settlement_price=total_price
                     )
                     db.session.add(settlement_item)
@@ -1102,8 +1112,8 @@ def admin_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=new_settlement.id,
                         place_slot_id=slot.id,
-                        slot_price=slot_reward,  # 100유입 리워드로 고정
-                        admin_price=slot.admin_price,
+                        slot_price=total_price,  # 계산된 총 가격
+                        admin_price=slot.admin_price or 0,
                         settlement_price=total_price
                     )
                     db.session.add(settlement_item)
@@ -1527,6 +1537,10 @@ def upload_distributor_slots():
     
     try:
         # 파일 저장
+        if not file.filename:
+            flash('파일명이 유효하지 않습니다.', 'danger')
+            return redirect(url_for('distributor_slots', type=slot_type))
+            
         filename = secure_filename(file.filename)
         file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(file_path)
@@ -1928,11 +1942,6 @@ def distributor_approve_request(approval_id, action):
                 # 기본 정보 로깅
                 app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {unit_price}원 × {daily_visitors}유입 = {total_price}원")
                 
-                # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
-                # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 쇼핑 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
-                
                 # 정산 자동 생성
                 today = datetime.now().date()
                 
@@ -1957,8 +1966,8 @@ def distributor_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=existing_settlement.id,
                         shopping_slot_id=slot.id,
-                        slot_price=slot_reward,  # 100유입 리워드로 고정
-                        admin_price=slot.admin_price,
+                        slot_price=total_price,  # 계산된 총 가격
+                        admin_price=slot.admin_price or 0,
                         settlement_price=total_price
                     )
                     db.session.add(settlement_item)
@@ -2019,13 +2028,6 @@ def distributor_approve_request(approval_id, action):
                 
                 # 기본 정보 로깅
                 app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {unit_price}원 × {daily_visitors}유입 = {total_price}원")
-                total_admin_price = 0  # 어드민 정산가 불필요
-                
-                # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {price_per_unit}원 × {daily_visitors}유입 = {total_price}원")
-                
-                # 기본 정보 로깅
-                app.logger.info(f"자동 정산 처리 - 플레이스 슬롯 #{slot.id}: {days}일 × {slot_reward}원 = {total_price}원")
                 
                 # 정산 자동 생성
                 today = datetime.now().date()
@@ -2051,8 +2053,8 @@ def distributor_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=existing_settlement.id,
                         place_slot_id=slot.id,
-                        slot_price=slot_reward,  # 100유입 리워드로 고정
-                        admin_price=slot.admin_price,
+                        slot_price=total_price,  # 계산된 총 가격
+                        admin_price=slot.admin_price or 0,
                         settlement_price=total_price
                     )
                     db.session.add(settlement_item)
@@ -2087,8 +2089,8 @@ def distributor_approve_request(approval_id, action):
                     settlement_item = SettlementItem(
                         settlement_id=new_settlement.id,
                         place_slot_id=slot.id,
-                        slot_price=slot_reward,  # 100유입 리워드로 고정
-                        admin_price=slot.admin_price,
+                        slot_price=total_price,  # 계산된 총 가격
+                        admin_price=slot.admin_price or 0,
                         settlement_price=total_price
                     )
                     db.session.add(settlement_item)
@@ -3874,8 +3876,17 @@ def create_settlement():
     if request.method == 'POST':
         user_id = request.form.get('user_id')
         settlement_type = request.form.get('settlement_type')
-        period_start = datetime.strptime(request.form.get('period_start'), '%Y-%m-%d').date()
-        period_end = datetime.strptime(request.form.get('period_end'), '%Y-%m-%d').date()
+        
+        # 날짜 파싱
+        period_start_str = request.form.get('period_start')
+        period_end_str = request.form.get('period_end')
+        
+        if not period_start_str or not period_end_str:
+            flash('정산 기간을 입력해주세요.', 'danger')
+            return redirect(url_for('create_settlement'))
+        
+        period_start = datetime.strptime(period_start_str, '%Y-%m-%d').date()
+        period_end = datetime.strptime(period_end_str, '%Y-%m-%d').date()
         notes = request.form.get('notes')
         
         # 정산 생성
