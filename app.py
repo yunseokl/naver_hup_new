@@ -28,6 +28,60 @@ except:
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# Utility functions
+def safe_int(value, default=0, allow_none=False):
+    """안전하게 정수로 변환
+    
+    Args:
+        value: 변환할 값
+        default: allow_none=True일 때 빈 값에 대한 기본값
+        allow_none: True이면 빈 값을 default로 변환, False이면 빈 값도 에러
+    
+    Returns:
+        int: 변환된 정수 값
+        
+    Raises:
+        ValueError: 변환 실패 시 또는 빈 값인데 allow_none=False인 경우
+    """
+    # 빈 값 처리
+    if value is None or value == '':
+        if allow_none:
+            return default
+        else:
+            raise ValueError("값이 비어있습니다.")
+    
+    # 정수 변환
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        raise ValueError(f"'{value}'은(는) 유효한 숫자가 아닙니다.")
+
+def validate_password_complexity(password):
+    """비밀번호 복잡도 검증
+    
+    최소 요구사항:
+    - 8자 이상
+    - 대문자 1개 이상
+    - 소문자 1개 이상
+    - 숫자 1개 이상
+    
+    Returns:
+        (bool, str): (유효 여부, 오류 메시지)
+    """
+    if len(password) < 8:
+        return False, '비밀번호는 8자 이상이어야 합니다.'
+    
+    if not any(c.isupper() for c in password):
+        return False, '비밀번호에는 대문자가 최소 1개 포함되어야 합니다.'
+    
+    if not any(c.islower() for c in password):
+        return False, '비밀번호에는 소문자가 최소 1개 포함되어야 합니다.'
+    
+    if not any(c.isdigit() for c in password):
+        return False, '비밀번호에는 숫자가 최소 1개 포함되어야 합니다.'
+    
+    return True, ''
+
 # Define the database base
 class Base(DeclarativeBase):
     pass
@@ -257,9 +311,10 @@ def register():
             flash('비밀번호가 일치하지 않습니다.', 'danger')
             return redirect(url_for('register'))
         
-        # 비밀번호 강도 확인
-        if len(password) < 8:
-            flash('비밀번호는 8자 이상이어야 합니다.', 'danger')
+        # 비밀번호 복잡도 검증
+        is_valid, error_msg = validate_password_complexity(password)
+        if not is_valid:
+            flash(error_msg, 'danger')
             return redirect(url_for('register'))
         
         # 이메일/사용자명 중복 확인
@@ -411,6 +466,12 @@ def admin_register():
         
         if password != password_confirm:
             flash('비밀번호가 일치하지 않습니다.', 'danger')
+            return redirect(url_for('admin_register'))
+        
+        # 비밀번호 복잡도 검증
+        is_valid, error_msg = validate_password_complexity(password)
+        if not is_valid:
+            flash(error_msg, 'danger')
             return redirect(url_for('admin_register'))
         
         # 이메일/사용자명 중복 확인
@@ -629,7 +690,13 @@ def admin_create_shopping_slot():
         slot_name = request.form.get('slot_name')
         slot_type = request.form.get('slot_type', 'standard')
         status = request.form.get('status', 'empty')
-        slot_price = int(request.form.get('slot_price', 0))
+        
+        try:
+            slot_price = safe_int(request.form.get('slot_price'), 0)
+        except ValueError as e:
+            flash(f'슬롯 단가 입력 오류: {str(e)}', 'danger')
+            return redirect(url_for('admin_shopping_slots'))
+        
         notes = request.form.get('notes', '')
         
         # 날짜 처리
@@ -676,7 +743,13 @@ def admin_create_place_slot():
         slot_name = request.form.get('slot_name')
         slot_type = request.form.get('slot_type', 'search')
         status = request.form.get('status', 'empty')
-        slot_price = int(request.form.get('slot_price', 0))
+        
+        try:
+            slot_price = safe_int(request.form.get('slot_price'), 0)
+        except ValueError as e:
+            flash(f'슬롯 단가 입력 오류: {str(e)}', 'danger')
+            return redirect(url_for('admin_place_slots'))
+        
         notes = request.form.get('notes', '')
         
         # 날짜 처리
@@ -725,8 +798,13 @@ def admin_edit_shopping_slot(slot_id):
             slot.slot_name = request.form.get('slot_name')
             slot.status = request.form.get('status')
             slot.slot_type = request.form.get('slot_type')
-            slot.slot_price = int(request.form.get('slot_price', 0))
-            slot.admin_price = int(request.form.get('admin_price', 0))
+            try:
+                slot.slot_price = safe_int(request.form.get('slot_price'), 0)
+                slot.admin_price = safe_int(request.form.get('admin_price'), 0)
+            except ValueError as e:
+                flash(f'가격 입력 오류: {str(e)}', 'danger')
+                return redirect(url_for('admin_edit_shopping_slot', slot_id=slot.id))
+            
             slot.notes = request.form.get('notes', '')
             
             # 날짜 처리
@@ -788,8 +866,13 @@ def admin_edit_place_slot(slot_id):
             slot.slot_name = request.form.get('slot_name')
             slot.status = request.form.get('status')
             slot.slot_type = request.form.get('slot_type')
-            slot.slot_price = int(request.form.get('slot_price', 0))
-            slot.admin_price = int(request.form.get('admin_price', 0))
+            try:
+                slot.slot_price = safe_int(request.form.get('slot_price'), 0)
+                slot.admin_price = safe_int(request.form.get('admin_price'), 0)
+            except ValueError as e:
+                flash(f'가격 입력 오류: {str(e)}', 'danger')
+                return redirect(url_for('admin_edit_shopping_slot', slot_id=slot.id))
+            
             slot.notes = request.form.get('notes', '')
             
             # 날짜 처리
