@@ -486,8 +486,16 @@ def approve_user(user_id, action):
 @admin_required
 def admin_approvals():
     """관리자용 승인 요청 관리 페이지"""
-    approvals = SlotApproval.query.filter_by(status='pending').all()
-    return render_template('admin/approvals.html', approvals=approvals)
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = SlotApproval.query.filter_by(status='pending').order_by(
+        SlotApproval.requested_at.desc()
+    ).paginate(page=page, per_page=per_page, error_out=False)
+    approvals = pagination.items
+    
+    return render_template('admin/approvals.html', 
+                          approvals=approvals, 
+                          pagination=pagination)
 
 @app.route('/admin/shopping_slots')
 @admin_required
@@ -528,8 +536,13 @@ def admin_shopping_slots():
             )
         )
     
-    # 결과 가져오기
-    slots = query.all()
+    # 페이지네이션
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = query.order_by(ShoppingSlot.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    slots = pagination.items
     
     # 총판 및 대행사 목록 (슬롯 추가 모달용)
     distributors = User.query.join(Role).filter(Role.name == 'distributor').all()
@@ -537,6 +550,7 @@ def admin_shopping_slots():
     
     return render_template('admin/shopping_slots.html',
                           slots=slots,
+                          pagination=pagination,
                           distributors=distributors,
                           agencies=agencies,
                           owner_type=owner_type,
@@ -583,8 +597,13 @@ def admin_place_slots():
             )
         )
     
-    # 결과 가져오기
-    slots = query.all()
+    # 페이지네이션
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = query.order_by(PlaceSlot.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    slots = pagination.items
     
     # 총판 및 대행사 목록 (슬롯 추가 모달용)
     distributors = User.query.join(Role).filter(Role.name == 'distributor').all()
@@ -592,6 +611,7 @@ def admin_place_slots():
     
     return render_template('admin/place_slots.html',
                           slots=slots,
+                          pagination=pagination,
                           distributors=distributors,
                           agencies=agencies,
                           owner_type=owner_type,
@@ -3860,11 +3880,17 @@ def success():
 @admin_required
 def admin_settlements():
     """관리자 정산 관리 페이지"""
-    settlements = Settlement.query.order_by(Settlement.created_at.desc()).all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 20
+    pagination = Settlement.query.order_by(Settlement.created_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    settlements = pagination.items
     pending_settlements = Settlement.query.filter_by(status='pending').count()
     
     return render_template('admin/settlements.html', 
                           settlements=settlements,
+                          pagination=pagination,
                           pending_settlements=pending_settlements)
 
 
