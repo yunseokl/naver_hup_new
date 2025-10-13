@@ -4509,6 +4509,40 @@ def bulk_save_shopping_slots():
     return jsonify({'success': True, 'count': len(slots)})
 
 
+@app.route('/bulk-save-place-slots', methods=['POST'])
+@login_required
+@distributor_required
+def bulk_save_place_slots():
+    """플레이스 슬롯 일괄 저장"""
+    data = request.json
+    slot_ids = data.get('slot_ids', [])
+    
+    if not slot_ids:
+        return jsonify({'success': False, 'message': "저장할 슬롯을 선택해주세요."}), 400
+    
+    # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회 가능하도록 수정
+    agency_ids = [agency.id for agency in current_user.agencies.all()]
+    user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
+    
+    # 선택된 슬롯 조회 - 총판 관리 하위의 슬롯들만 가능
+    slots = PlaceSlot.query.filter(
+        PlaceSlot.id.in_(slot_ids),
+        PlaceSlot.user_id.in_(user_ids),
+        PlaceSlot.status == 'approved'  # 승인된 슬롯만 처리
+    ).all()
+    
+    if not slots:
+        return jsonify({'success': False, 'message': "선택한 슬롯을 찾을 수 없거나 저장할 수 없는 상태입니다."}), 404
+    
+    # 슬롯 상태를 'live'로 변경 (사용 중 상태로 변경)
+    for slot in slots:
+        slot.status = 'live'
+    
+    db.session.commit()
+    
+    return jsonify({'success': True, 'count': len(slots)})
+
+
 @app.route('/bulk-delete-shopping-slots', methods=['POST'])
 @login_required
 @distributor_required
@@ -4551,6 +4585,54 @@ def bulk_delete_shopping_slots():
     quota = SlotQuota.query.filter_by(user_id=current_user.id).first()
     if quota:
         quota.shopping_slots_used = 0
+        
+    db.session.commit()
+    
+    return jsonify({'success': True, 'count': count})
+
+
+@app.route('/bulk-delete-place-slots', methods=['POST'])
+@login_required
+@distributor_required
+def bulk_delete_place_slots():
+    """플레이스 슬롯 전체 삭제"""
+    # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회 가능하도록 수정
+    agency_ids = [agency.id for agency in current_user.agencies.all()]
+    user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
+    
+    # 필터 적용
+    slots = PlaceSlot.query.filter(PlaceSlot.user_id.in_(user_ids)).all()
+    
+    if not slots:
+        return jsonify({'success': False, 'message': "삭제할 슬롯이 없습니다."}), 404
+    
+    count = len(slots)
+    
+    # 슬롯 상태에 따라 다르게 처리
+    pending_slots = []
+    other_slots = []
+    
+    for slot in slots:
+        if slot.status == 'pending':
+            # 승인 대기 중인 슬롯은 승인 요청도 함께 삭제
+            pending_slots.append(slot)
+        else:
+            other_slots.append(slot)
+    
+    # 승인 대기 중인 슬롯의 승인 요청 삭제
+    for slot in pending_slots:
+        approvals = SlotApproval.query.filter_by(place_slot_id=slot.id).all()
+        for approval in approvals:
+            db.session.delete(approval)
+    
+    # 모든 슬롯 삭제
+    for slot in slots:
+        db.session.delete(slot)
+    
+    # 할당량 사용 업데이트
+    quota = SlotQuota.query.filter_by(user_id=current_user.id).first()
+    if quota:
+        quota.place_slots_used = 0
         
     db.session.commit()
     
