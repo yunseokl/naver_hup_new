@@ -555,20 +555,17 @@ def approve_user(user_id, action):
 @admin_required
 def admin_approvals():
     """관리자용 승인 요청 관리 페이지"""
-    page = request.args.get('page', 1, type=int)
-    per_page = 20
-    pagination = SlotApproval.query.options(
+    # 모든 승인 요청을 가져와서 프론트엔드에서 표시 개수 조절
+    approvals = SlotApproval.query.options(
         joinedload(SlotApproval.requester).joinedload(User.role),
         joinedload(SlotApproval.shopping_slot),
         joinedload(SlotApproval.place_slot)
     ).filter_by(status='pending').order_by(
         SlotApproval.requested_at.desc()
-    ).paginate(page=page, per_page=per_page, error_out=False)
-    approvals = pagination.items
+    ).all()
     
     return render_template('admin/approvals.html', 
-                          approvals=approvals, 
-                          pagination=pagination)
+                          approvals=approvals)
 
 @app.route('/admin/shopping_slots')
 @admin_required
