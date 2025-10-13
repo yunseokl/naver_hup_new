@@ -1373,6 +1373,7 @@ def distributor_agencies():
     return render_template('distributor/agencies.html', agencies=agencies)
 
 @app.route('/distributor/toggle-slot/<int:slot_id>', methods=['POST'])
+@csrf.exempt
 @distributor_required
 def toggle_slot(slot_id):
     """슬롯 활성화/비활성화 토글"""
@@ -4476,6 +4477,7 @@ def agency_settlement_detail(settlement_id):
 
 
 @app.route('/bulk-save-shopping-slots', methods=['POST'])
+@csrf.exempt
 @login_required
 @distributor_required
 def bulk_save_shopping_slots():
@@ -4510,6 +4512,7 @@ def bulk_save_shopping_slots():
 
 
 @app.route('/bulk-save-place-slots', methods=['POST'])
+@csrf.exempt
 @login_required
 @distributor_required
 def bulk_save_place_slots():
@@ -4544,6 +4547,7 @@ def bulk_save_place_slots():
 
 
 @app.route('/bulk-delete-shopping-slots', methods=['POST'])
+@csrf.exempt
 @login_required
 @distributor_required
 def bulk_delete_shopping_slots():
@@ -4592,6 +4596,7 @@ def bulk_delete_shopping_slots():
 
 
 @app.route('/bulk-delete-place-slots', methods=['POST'])
+@csrf.exempt
 @login_required
 @distributor_required
 def bulk_delete_place_slots():

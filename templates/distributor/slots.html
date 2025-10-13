@@ -1066,12 +1066,15 @@
     
     // 슬롯 상태 토글 함수
     function toggleSlotStatus(slotId, isActive) {
-        fetch('/api/toggle-slot', {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+        
+        fetch(`/distributor/toggle-slot/${slotId}`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
             },
-            body: JSON.stringify({ slot_id: slotId, is_active: isActive })
+            body: JSON.stringify({ active: isActive })
         })
         .then(response => response.json())
         .then(data => {
@@ -1121,9 +1124,13 @@
     
     // 필터 초기화 함수
     function resetFilters() {
-        document.getElementById('statusFilter').value = '';
-        document.getElementById('agencyFilter').value = '';
-        document.getElementById('keywordFilter').value = '';
+        const statusFilter = document.getElementById('statusFilter');
+        const agencyFilter = document.getElementById('agencyFilter');
+        const keywordFilter = document.getElementById('keywordFilter');
+        
+        if (statusFilter) statusFilter.value = '';
+        if (agencyFilter) agencyFilter.value = '';
+        if (keywordFilter) keywordFilter.value = '';
     }
     
     // 슬롯 상세 정보 표시/숨김 함수
@@ -1230,13 +1237,15 @@
         if (confirmBulkSave) {
             confirmBulkSave.addEventListener('click', function() {
                 const selectedSlots = Array.from(document.querySelectorAll('.slot-checkbox:checked')).map(cb => cb.value);
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
                 
                 // AJAX 요청으로 선택된 슬롯 일괄 저장
                 fetch('{{ url_for("bulk_save_shopping_slots") if slot_type == "shopping" else url_for("bulk_save_place_slots") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({ slot_ids: selectedSlots })
                 })
@@ -1268,12 +1277,15 @@
         const confirmBulkDelete = document.getElementById('confirmBulkDelete');
         if (confirmBulkDelete) {
             confirmBulkDelete.addEventListener('click', function() {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}';
+                
                 // AJAX 요청으로 모든 슬롯 삭제
                 fetch('{{ url_for("bulk_delete_shopping_slots") if slot_type == "shopping" else url_for("bulk_delete_place_slots") }}', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRFToken': csrfToken
                     },
                     body: JSON.stringify({})
                 })
