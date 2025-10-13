@@ -349,6 +349,9 @@
             applyFilters(currentFilter);
         });
         
+        // 페이지 로드 시 초기 필터 적용
+        applyFilters(currentFilter);
+        
         // 전체 선택 기능 (보이는 항목만)
         const selectAllCheckbox = document.getElementById('selectAll');
         const approvalCheckboxes = document.querySelectorAll('.approval-check');
