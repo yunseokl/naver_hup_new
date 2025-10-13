@@ -297,7 +297,9 @@
             const rows = document.querySelectorAll('.approval-row');
             let visibleCount = 0;
             
-            rows.forEach(row => {
+            console.log('필터 적용:', type, '개수:', limit, '전체 행:', rows.length);
+            
+            rows.forEach((row, index) => {
                 let shouldShow = false;
                 
                 // 타입 필터
@@ -306,17 +308,25 @@
                 }
                 
                 // 개수 제한
-                if (shouldShow && limit !== 'all' && visibleCount >= parseInt(limit)) {
-                    shouldShow = false;
-                }
-                
                 if (shouldShow) {
-                    row.style.display = '';
-                    visibleCount++;
+                    if (limit === 'all') {
+                        // 전체 보기
+                        row.style.display = '';
+                        visibleCount++;
+                    } else if (visibleCount < parseInt(limit)) {
+                        // 제한 내에 있음
+                        row.style.display = '';
+                        visibleCount++;
+                    } else {
+                        // 제한 초과
+                        row.style.display = 'none';
+                    }
                 } else {
                     row.style.display = 'none';
                 }
             });
+            
+            console.log('보이는 행 개수:', visibleCount);
         }
         
         function setActiveFilterButton(button) {
