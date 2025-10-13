@@ -289,7 +289,8 @@
                                     <div class="form-check form-switch">
                                         <input class="form-check-input status-toggle" type="checkbox" role="switch" 
                                                id="statusToggle{{ slot.id }}" data-slot-id="{{ slot.id }}"
-                                               {% if slot.status == 'live' %}checked{% endif %}>
+                                               {% if slot.status == 'live' %}checked{% endif %}
+                                               {% if slot.status not in ['approved', 'live'] %}disabled{% endif %}>
                                     </div>
                                     <button class="btn btn-sm btn-outline-primary edit-slot-btn" 
                                             data-slot-id="{{ slot.id }}">

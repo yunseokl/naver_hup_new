@@ -1391,6 +1391,10 @@ def toggle_slot(slot_id):
             
             if shopping_slot.user_id not in user_ids:
                 return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
+            
+            # 승인된 상태만 토글 가능
+            if shopping_slot.status not in ['approved', 'live']:
+                return jsonify({'success': False, 'message': '승인된 슬롯만 활성화할 수 있습니다.'}), 400
                 
             # 상태 변경
             shopping_slot.status = 'live' if active else 'approved'
@@ -1406,6 +1410,10 @@ def toggle_slot(slot_id):
             
             if place_slot.user_id not in user_ids:
                 return jsonify({'success': False, 'message': '권한이 없습니다.'}), 403
+            
+            # 승인된 상태만 토글 가능
+            if place_slot.status not in ['approved', 'live']:
+                return jsonify({'success': False, 'message': '승인된 슬롯만 활성화할 수 있습니다.'}), 400
                 
             # 상태 변경
             place_slot.status = 'live' if active else 'approved'
