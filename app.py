@@ -993,6 +993,7 @@ def admin_delete_place_slot(slot_id):
     return redirect(url_for('admin_place_slots'))
 
 @app.route('/admin/bulk-approve', methods=['POST'])
+@csrf.exempt
 @login_required
 @admin_required
 def admin_bulk_approve():

@@ -19,10 +19,21 @@
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">승인 대기 중인 요청</h5>
-            <div class="btn-group">
-                <button type="button" class="btn btn-outline-secondary" id="filterAllBtn">전체</button>
-                <button type="button" class="btn btn-outline-secondary" id="filterShoppingBtn">쇼핑</button>
-                <button type="button" class="btn btn-outline-secondary" id="filterPlaceBtn">플레이스</button>
+            <div class="d-flex gap-2 align-items-center">
+                <div class="d-flex align-items-center">
+                    <label class="me-2 mb-0">표시 개수:</label>
+                    <select class="form-select form-select-sm" id="itemsPerPage" style="width: auto;">
+                        <option value="20">20개</option>
+                        <option value="50">50개</option>
+                        <option value="100">100개</option>
+                        <option value="all">전체</option>
+                    </select>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-outline-secondary" id="filterAllBtn">전체</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filterShoppingBtn">쇼핑</button>
+                    <button type="button" class="btn btn-outline-secondary" id="filterPlaceBtn">플레이스</button>
+                </div>
             </div>
         </div>
     </div>
@@ -277,33 +288,49 @@
         const filterPlaceBtn = document.getElementById('filterPlaceBtn');
         
         filterAllBtn.addEventListener('click', function() {
-            document.querySelectorAll('.approval-row').forEach(row => {
-                row.style.display = '';
-            });
+            currentFilter = 'all';
+            applyFilters(currentFilter);
             setActiveFilterButton(this);
         });
         
         filterShoppingBtn.addEventListener('click', function() {
-            document.querySelectorAll('.approval-row').forEach(row => {
-                if (row.classList.contains('shopping')) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            currentFilter = 'shopping';
+            applyFilters(currentFilter);
             setActiveFilterButton(this);
         });
         
         filterPlaceBtn.addEventListener('click', function() {
-            document.querySelectorAll('.approval-row').forEach(row => {
-                if (row.classList.contains('place')) {
+            currentFilter = 'place';
+            applyFilters(currentFilter);
+            setActiveFilterButton(this);
+        });
+        
+        function applyFilters(type) {
+            const limit = document.getElementById('itemsPerPage').value;
+            const rows = document.querySelectorAll('.approval-row');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                let shouldShow = false;
+                
+                // 타입 필터
+                if (type === 'all' || row.classList.contains(type)) {
+                    shouldShow = true;
+                }
+                
+                // 개수 제한
+                if (shouldShow && limit !== 'all' && visibleCount >= parseInt(limit)) {
+                    shouldShow = false;
+                }
+                
+                if (shouldShow) {
                     row.style.display = '';
+                    visibleCount++;
                 } else {
                     row.style.display = 'none';
                 }
             });
-            setActiveFilterButton(this);
-        });
+        }
         
         function setActiveFilterButton(button) {
             [filterAllBtn, filterShoppingBtn, filterPlaceBtn].forEach(btn => {
@@ -314,13 +341,24 @@
             button.classList.add('active', 'btn-secondary');
         }
         
-        // 전체 선택 기능
+        // 표시 개수 변경 기능
+        const itemsPerPageSelect = document.getElementById('itemsPerPage');
+        let currentFilter = 'all';
+        
+        itemsPerPageSelect.addEventListener('change', function() {
+            applyFilters(currentFilter);
+        });
+        
+        // 전체 선택 기능 (보이는 항목만)
         const selectAllCheckbox = document.getElementById('selectAll');
         const approvalCheckboxes = document.querySelectorAll('.approval-check');
         
         selectAllCheckbox.addEventListener('change', function() {
             approvalCheckboxes.forEach(checkbox => {
-                checkbox.checked = this.checked;
+                const row = checkbox.closest('.approval-row');
+                if (row && row.style.display !== 'none') {
+                    checkbox.checked = this.checked;
+                }
             });
         });
         
