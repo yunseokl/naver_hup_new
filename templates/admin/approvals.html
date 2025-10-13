@@ -282,31 +282,18 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 필터링 기능
+        // 전역 변수 선언
+        let currentFilter = 'all';
+        
+        // DOM 요소 가져오기
         const filterAllBtn = document.getElementById('filterAllBtn');
         const filterShoppingBtn = document.getElementById('filterShoppingBtn');
         const filterPlaceBtn = document.getElementById('filterPlaceBtn');
+        const itemsPerPageSelect = document.getElementById('itemsPerPage');
         
-        filterAllBtn.addEventListener('click', function() {
-            currentFilter = 'all';
-            applyFilters(currentFilter);
-            setActiveFilterButton(this);
-        });
-        
-        filterShoppingBtn.addEventListener('click', function() {
-            currentFilter = 'shopping';
-            applyFilters(currentFilter);
-            setActiveFilterButton(this);
-        });
-        
-        filterPlaceBtn.addEventListener('click', function() {
-            currentFilter = 'place';
-            applyFilters(currentFilter);
-            setActiveFilterButton(this);
-        });
-        
+        // 필터 적용 함수
         function applyFilters(type) {
-            const limit = document.getElementById('itemsPerPage').value;
+            const limit = itemsPerPageSelect.value;
             const rows = document.querySelectorAll('.approval-row');
             let visibleCount = 0;
             
@@ -341,11 +328,28 @@
             button.classList.add('active', 'btn-secondary');
         }
         
-        // 표시 개수 변경 기능
-        const itemsPerPageSelect = document.getElementById('itemsPerPage');
-        let currentFilter = 'all';
+        // 필터 버튼 이벤트
+        filterAllBtn.addEventListener('click', function() {
+            currentFilter = 'all';
+            applyFilters(currentFilter);
+            setActiveFilterButton(this);
+        });
         
+        filterShoppingBtn.addEventListener('click', function() {
+            currentFilter = 'shopping';
+            applyFilters(currentFilter);
+            setActiveFilterButton(this);
+        });
+        
+        filterPlaceBtn.addEventListener('click', function() {
+            currentFilter = 'place';
+            applyFilters(currentFilter);
+            setActiveFilterButton(this);
+        });
+        
+        // 표시 개수 변경 이벤트
         itemsPerPageSelect.addEventListener('change', function() {
+            console.log('드롭다운 변경:', this.value);
             applyFilters(currentFilter);
         });
         
