@@ -399,6 +399,7 @@
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <form action="{{ url_for('edit_shopping_slot' if slot_type == 'shopping' else 'edit_place_slot', slot_id=slot.id) }}" method="post">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <div class="modal-body">
                                             {% if slot_type == 'shopping' %}
                                             <div class="row mb-3">
@@ -576,6 +577,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form action="{{ url_for('create_distributor_slot') }}" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <input type="hidden" name="slot_type" value="{{ slot_type }}">
                 <div class="modal-body">
                     <div class="mb-3">
