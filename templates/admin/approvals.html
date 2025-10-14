@@ -136,6 +136,13 @@
                 </tbody>
             </table>
         </div>
+        <!-- 페이지네이션 -->
+        <div class="card-footer" id="paginationContainer" style="display: none;">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0" id="paginationList">
+                </ul>
+            </nav>
+        </div>
     </div>
 </div>
 
@@ -257,51 +264,107 @@
 {% block scripts %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // 전역 변수 선언
-        let currentFilter = 'all';
-        
         // DOM 요소 가져오기
         const filterAllBtn = document.getElementById('filterAllBtn');
         const filterShoppingBtn = document.getElementById('filterShoppingBtn');
         const filterPlaceBtn = document.getElementById('filterPlaceBtn');
         const itemsPerPageSelect = document.getElementById('itemsPerPage');
+        const paginationContainer = document.getElementById('paginationContainer');
+        const paginationList = document.getElementById('paginationList');
+        
+        // 전역 변수 선언
+        let currentPage = 1;
+        let currentFilter = 'all';
         
         // 필터 적용 함수
-        function applyFilters(type) {
+        function applyFilters(type, page = 1) {
+            currentFilter = type;
+            currentPage = page;
+            
             const limit = itemsPerPageSelect.value;
             const rows = document.querySelectorAll('.approval-row');
-            let visibleCount = 0;
             
-            console.log('필터 적용:', type, '개수:', limit, '전체 행:', rows.length);
-            
-            rows.forEach((row, index) => {
-                let shouldShow = false;
-                
-                // 타입 필터
+            // 타입 필터링된 항목들 찾기
+            let filteredRows = [];
+            rows.forEach(row => {
                 if (type === 'all' || row.classList.contains(type)) {
-                    shouldShow = true;
-                }
-                
-                // 개수 제한
-                if (shouldShow) {
-                    if (limit === 'all') {
-                        // 전체 보기
-                        row.style.display = '';
-                        visibleCount++;
-                    } else if (visibleCount < parseInt(limit)) {
-                        // 제한 내에 있음
-                        row.style.display = '';
-                        visibleCount++;
-                    } else {
-                        // 제한 초과
-                        row.style.display = 'none';
-                    }
-                } else {
-                    row.style.display = 'none';
+                    filteredRows.push(row);
                 }
             });
             
-            console.log('보이는 행 개수:', visibleCount);
+            const totalFiltered = filteredRows.length;
+            
+            // 모든 행 숨기기
+            rows.forEach(row => row.style.display = 'none');
+            
+            if (limit === 'all') {
+                // 전체 보기 - 페이지네이션 없음
+                filteredRows.forEach(row => row.style.display = '');
+                paginationContainer.style.display = 'none';
+            } else {
+                // 페이지네이션 적용
+                const itemsPerPage = parseInt(limit);
+                const totalPages = Math.ceil(totalFiltered / itemsPerPage);
+                const startIdx = (page - 1) * itemsPerPage;
+                const endIdx = startIdx + itemsPerPage;
+                
+                // 현재 페이지 항목만 표시
+                filteredRows.slice(startIdx, endIdx).forEach(row => {
+                    row.style.display = '';
+                });
+                
+                // 페이지네이션 UI 업데이트
+                if (totalPages > 1) {
+                    updatePagination(totalPages, page);
+                    paginationContainer.style.display = '';
+                } else {
+                    paginationContainer.style.display = 'none';
+                }
+            }
+        }
+        
+        // 페이지네이션 UI 업데이트
+        function updatePagination(totalPages, currentPage) {
+            paginationList.innerHTML = '';
+            
+            // 이전 버튼
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage - 1}">이전</a>`;
+            paginationList.appendChild(prevLi);
+            
+            // 페이지 번호들
+            for (let i = 1; i <= totalPages; i++) {
+                // 첫 페이지, 마지막 페이지, 현재 페이지 주변만 표시
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    const li = document.createElement('li');
+                    li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                    li.innerHTML = `<a class="page-link" href="#" data-page="${i}">${i}</a>`;
+                    paginationList.appendChild(li);
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    const li = document.createElement('li');
+                    li.className = 'page-item disabled';
+                    li.innerHTML = '<span class="page-link">...</span>';
+                    paginationList.appendChild(li);
+                }
+            }
+            
+            // 다음 버튼
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `<a class="page-link" href="#" data-page="${currentPage + 1}">다음</a>`;
+            paginationList.appendChild(nextLi);
+            
+            // 페이지 클릭 이벤트
+            paginationList.querySelectorAll('a.page-link').forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const page = parseInt(this.dataset.page);
+                    if (page >= 1 && page <= totalPages) {
+                        applyFilters(currentFilter, page);
+                    }
+                });
+            });
         }
         
         function setActiveFilterButton(button) {
@@ -334,12 +397,11 @@
         
         // 표시 개수 변경 이벤트
         itemsPerPageSelect.addEventListener('change', function() {
-            console.log('드롭다운 변경:', this.value);
-            applyFilters(currentFilter);
+            applyFilters(currentFilter, 1); // 페이지를 1로 리셋
         });
         
         // 페이지 로드 시 초기 필터 적용
-        applyFilters(currentFilter);
+        applyFilters(currentFilter, 1);
         
         // 전체 선택 기능 (보이는 항목만)
         const selectAllCheckbox = document.getElementById('selectAll');
