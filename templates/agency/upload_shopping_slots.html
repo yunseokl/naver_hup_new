@@ -1,0 +1,98 @@
+{% extends "layout.html" %}
+
+{% block title %}쇼핑 슬롯 일괄 업로드{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i data-feather="upload" class="me-2"></i> 쇼핑 슬롯 일괄 업로드</h2>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">엑셀 파일 업로드</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <div class="mb-3">
+                            <div class="alert alert-info">
+                                <div class="d-flex align-items-center">
+                                    <i data-feather="info" class="me-2"></i>
+                                    <div>
+                                        <h6 class="mb-1">일괄 업로드 안내</h6>
+                                        <p class="mb-0">엑셀 파일(.xlsx, .xls)을 업로드하여 여러 개의 쇼핑 슬롯을 한번에 등록할 수 있습니다.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="file" class="form-label">엑셀 파일 선택</label>
+                            <input type="file" class="form-control" id="file" name="file" accept=".xlsx,.xls" required>
+                            <div class="form-text">허용 파일 형식: .xlsx, .xls</div>
+                        </div>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{{ url_for('agency_shopping_slots') }}" class="btn btn-outline-secondary me-2">취소</a>
+                            <button type="submit" class="btn btn-primary">
+                                <i data-feather="upload" class="me-1"></i> 업로드
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">엑셀 파일 형식</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small mb-2">엑셀 파일에는 다음 컬럼이 포함되어야 합니다:</p>
+                    <ul class="small mb-3">
+                        <li><strong>slot_name</strong> (필수): 슬롯 이름</li>
+                        <li><strong>store_type</strong>: 스토어 유형</li>
+                        <li><strong>product_id</strong>: 광고품ID</li>
+                        <li><strong>shopping_campaign_id</strong>: 쇼핑캠페인ID</li>
+                        <li><strong>product_name</strong>: 상품명</li>
+                        <li><strong>keywords</strong>: 키워드</li>
+                        <li><strong>store_name</strong>: 스토어명</li>
+                        <li><strong>price</strong>: 가격</li>
+                        <li><strong>sale_price</strong>: 할인가</li>
+                        <li><strong>start_date</strong>: 시작일 (YYYY-MM-DD)</li>
+                        <li><strong>end_date</strong>: 종료일 (YYYY-MM-DD)</li>
+                        <li><strong>bid_type</strong>: 입찰방식</li>
+                        <li><strong>targeting</strong>: 타겟팅</li>
+                    </ul>
+
+                    <div class="alert alert-warning small mb-0">
+                        <i data-feather="alert-triangle" style="width: 16px; height: 16px;" class="me-1"></i>
+                        업로드된 슬롯은 총판의 승인이 필요합니다.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.getElementById('file');
+
+    fileInput.addEventListener('change', function(e) {
+        const fileName = e.target.files[0]?.name;
+        if (fileName && !fileName.match(/\.(xlsx|xls)$/i)) {
+            alert('엑셀 파일(.xlsx, .xls)만 업로드 가능합니다.');
+            e.target.value = '';
+        }
+    });
+});
+</script>
+{% endblock %}
