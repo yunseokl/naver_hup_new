@@ -40,9 +40,11 @@
                     </div>
                     
                     <div class="text-center">
-                        <a href="{{ url_for('download_project_zip') }}" class="btn btn-primary btn-lg">
-                            <i data-feather="download" class="me-2"></i> 다운로드
-                        </a>
+                        <!-- 다운로드 기능은 현재 비활성화되어 있습니다 -->
+                        <button class="btn btn-secondary btn-lg" disabled>
+                            <i data-feather="download" class="me-2"></i> 다운로드 (준비 중)
+                        </button>
+                        <p class="text-muted mt-2 small">프로젝트 다운로드 기능은 곧 제공될 예정입니다.</p>
                     </div>
                 </div>
                 <div class="card-footer text-center text-muted">

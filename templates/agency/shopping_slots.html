@@ -42,7 +42,7 @@
                 <i data-feather="download" class="me-1" style="width: 18px; height: 18px;"></i> 엑셀 다운로드
             </a>
             <a href="{{ url_for('upload_shopping_slots') }}" class="btn btn-secondary">
-                <i data-feather="upload" class="me-1" style="width: 18px; height: 18px;"></i> 엑셀 내보내기
+                <i data-feather="upload" class="me-1" style="width: 18px; height: 18px;"></i> 일괄 업로드
             </a>
             <button type="button" class="btn btn-success" id="bulkSaveButton" {% if shopping_slots|length == 0 %}disabled{% endif %}>
                 <i data-feather="save" class="me-1" style="width: 18px; height: 18px;"></i> 슬롯 활성
