@@ -24,9 +24,60 @@ except:
     # 한국어 로케일을 지원하지 않는 경우 기본 로케일 사용
     locale.setlocale(locale.LC_ALL, '')
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
+# Configure logging with rotation
+from logging.handlers import RotatingFileHandler
+import sys
+
+# 로그 디렉토리 생성
+os.makedirs('logs', exist_ok=True)
+
+# 로거 설정
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# 파일 핸들러 (10MB 크기, 최대 5개 백업)
+file_handler = RotatingFileHandler(
+    'logs/app.log', 
+    maxBytes=10*1024*1024,  # 10MB
+    backupCount=5,
+    encoding='utf-8'
+)
+file_handler.setLevel(logging.INFO)
+file_formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+file_handler.setFormatter(file_formatter)
+
+# 콘솔 핸들러
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setLevel(logging.DEBUG)
+console_formatter = logging.Formatter(
+    '%(levelname)s - %(message)s'
+)
+console_handler.setFormatter(console_formatter)
+
+# 핸들러 추가
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+# API Response Helper Functions
+def api_success(data=None, message=None, status_code=200):
+    """표준 성공 응답"""
+    response = {
+        'success': True,
+        'data': data if data is not None else {},
+        'message': message
+    }
+    return jsonify(response), status_code
+
+def api_error(message, status_code=400, error_code=None):
+    """표준 오류 응답"""
+    response = {
+        'success': False,
+        'error': message,
+        'error_code': error_code
+    }
+    return jsonify(response), status_code
 
 # Utility functions
 def safe_int(value, default=0, allow_none=False):
@@ -97,12 +148,24 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # Configure the database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
+    "pool_recycle": 300,  # 5분마다 연결 재활용
+    "pool_pre_ping": True,  # 연결 사용 전 확인
+    "pool_size": 10,  # 커넥션 풀 크기
+    "max_overflow": 20,  # 최대 추가 연결 수
+    "pool_timeout": 30,  # 연결 대기 시간 (초)
+    "echo": False,  # SQL 로깅 비활성화 (프로덕션)
 }
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # 성능 개선
 app.config["UPLOAD_FOLDER"] = "uploads"
 app.config["MAX_CONTENT_LENGTH"] = 64 * 1024 * 1024  # 64MB max upload size
 app.config["ALLOWED_EXTENSIONS"] = {'xlsx', 'xls'}
+
+# 보안 설정
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("FLASK_ENV") == "production"  # HTTPS 전용 (프로덕션)
+app.config["SESSION_COOKIE_HTTPONLY"] = True  # JavaScript 접근 차단
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # CSRF 공격 방지
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)  # 세션 수명 24시간
+app.config["WTF_CSRF_TIME_LIMIT"] = None  # CSRF 토큰 시간 제한 없음
 
 # Initialize the database with the app
 db.init_app(app)
@@ -196,6 +259,55 @@ def utility_processor():
 
 # app 초기화 후 바로 실행합니다
 create_tables_and_defaults()
+
+# 전역 에러 핸들러
+@app.errorhandler(400)
+def bad_request(error):
+    """잘못된 요청 처리"""
+    logger.warning(f"Bad Request: {error}")
+    if request.is_json:
+        return jsonify({'success': False, 'error': '잘못된 요청입니다.'}), 400
+    return render_template('errors/400.html'), 400
+
+@app.errorhandler(403)
+def forbidden(error):
+    """권한 없음 처리"""
+    logger.warning(f"Forbidden: {error}")
+    if request.is_json:
+        return jsonify({'success': False, 'error': '접근 권한이 없습니다.'}), 403
+    return render_template('errors/403.html'), 403
+
+@app.errorhandler(404)
+def not_found(error):
+    """페이지를 찾을 수 없음 처리"""
+    logger.warning(f"Not Found: {error}")
+    if request.is_json:
+        return jsonify({'success': False, 'error': '요청한 리소스를 찾을 수 없습니다.'}), 404
+    return render_template('errors/404.html'), 404
+
+@app.errorhandler(500)
+def internal_error(error):
+    """내부 서버 오류 처리"""
+    logger.error(f"Internal Server Error: {error}", exc_info=True)
+    db.session.rollback()
+    if request.is_json:
+        return jsonify({'success': False, 'error': '서버 오류가 발생했습니다.'}), 500
+    return render_template('errors/500.html'), 500
+
+@app.errorhandler(Exception)
+def handle_exception(error):
+    """처리되지 않은 예외 처리"""
+    logger.error(f"Unhandled Exception: {error}", exc_info=True)
+    db.session.rollback()
+    
+    # HTTPException은 그대로 전달
+    if isinstance(error, HTTPException):
+        return error
+    
+    # 기타 예외는 500 에러로 처리
+    if request.is_json:
+        return jsonify({'success': False, 'error': '서버 오류가 발생했습니다.'}), 500
+    return render_template('errors/500.html'), 500
 
 # User loader function for Flask-Login
 @login_manager.user_loader
