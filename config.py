@@ -88,6 +88,7 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # 인메모리 데이터베이스
+    SQLALCHEMY_ENGINE_OPTIONS = {}  # SQLite는 pool 옵션 불필요
     WTF_CSRF_ENABLED = False  # 테스트에서는 CSRF 비활성화
 
 

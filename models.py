@@ -20,6 +20,15 @@ class Role(db.Model):
 # 사용자 모델
 class User(UserMixin, db.Model):
     """사용자 모델"""
+    __tablename__ = 'user'
+    __table_args__ = (
+        db.Index('idx_user_username', 'username'),
+        db.Index('idx_user_email', 'email'),
+        db.Index('idx_user_role', 'role_id'),
+        db.Index('idx_user_parent', 'parent_id'),
+        db.Index('idx_user_active', 'is_active'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(100), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
@@ -70,6 +79,14 @@ class User(UserMixin, db.Model):
 # 쇼핑 슬롯 모델
 class ShoppingSlot(db.Model):
     """쇼핑 슬롯 모델"""
+    __tablename__ = 'shopping_slot'
+    __table_args__ = (
+        db.Index('idx_shopping_user_status', 'user_id', 'status'),
+        db.Index('idx_shopping_dates', 'start_date', 'end_date'),
+        db.Index('idx_shopping_created', 'created_at'),
+        db.Index('idx_shopping_settlement', 'settlement_status'),
+    )
+    
     id = db.Column(db.Integer, primary_key=True)
     is_selected = db.Column(db.Boolean, default=False)  # 선택 여부
     
