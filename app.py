@@ -118,8 +118,8 @@ login_manager.login_message_category = 'warning'
 csrf = CSRFProtect()
 csrf.init_app(app)
 
-# CSRF 보호 제외 경로
-csrf.exempt("admin_settlement_action")
+# CSRF 보호 제외 경로 (API endpoints only - settlement action should have CSRF protection)
+# REMOVED: csrf.exempt("admin_settlement_action")  # SECURITY: Settlement actions must have CSRF protection
 csrf.exempt("save_slot_api")
 csrf.exempt("save_slots_bulk_api")
 csrf.exempt("toggle_slot_api")
@@ -256,18 +256,23 @@ def login():
         password = request.form.get('password')
         
         user = User.query.filter_by(username=username).first()
-        
+
         if user and user.check_password(password):
+            # SECURITY: Check if user account is active
+            if not user.is_active:
+                flash('계정이 비활성화되었습니다. 관리자에게 문의하세요.', 'danger')
+                return redirect(url_for('login'))
+
             login_user(user)
             user.last_login = datetime.utcnow()
             db.session.commit()
-            
+
             next_page = request.args.get('next')
             if not next_page or urlparse(next_page).netloc != '':
                 next_page = url_for('dashboard')
-            
+
             return redirect(next_page)
-        
+
         flash('아이디 또는 비밀번호가 잘못되었습니다.', 'danger')
     
     return render_template('auth/login.html', form=form)
@@ -872,7 +877,7 @@ def admin_edit_shopping_slot(slot_id):
 def admin_edit_place_slot(slot_id):
     """관리자가 플레이스 슬롯 편집"""
     slot = PlaceSlot.query.get_or_404(slot_id)
-    
+
     if request.method == 'POST':
         try:
             # 기본 정보 업데이트
@@ -884,7 +889,8 @@ def admin_edit_place_slot(slot_id):
                 slot.admin_price = safe_int(request.form.get('admin_price'), 0)
             except ValueError as e:
                 flash(f'가격 입력 오류: {str(e)}', 'danger')
-                return redirect(url_for('admin_edit_shopping_slot', slot_id=slot.id))
+                # BUGFIX: Was redirecting to wrong endpoint (admin_edit_shopping_slot)
+                return redirect(url_for('admin_edit_place_slot', slot_id=slot.id))
             
             slot.notes = request.form.get('notes', '')
             
@@ -2505,20 +2511,31 @@ def request_place_slot_refund(slot_id):
         
         # 환불 금액 계산
         today = datetime.now().date()
-        start_date = slot.start_date or today
-        end_date = slot.end_date or today
-        
+
+        # SECURITY: Validate dates exist
+        if not slot.start_date or not slot.end_date:
+            flash('슬롯 날짜 정보가 없어 환불을 처리할 수 없습니다.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        start_date = slot.start_date
+        end_date = slot.end_date
+
         # 전체 일수
         total_days = (end_date - start_date).days + 1
-        
+
+        # SECURITY: Validate total_days is positive
+        if total_days <= 0:
+            flash('슬롯 기간이 올바르지 않아 환불을 처리할 수 없습니다.', 'danger')
+            return redirect(url_for('dashboard'))
+
         # 남은 일수 계산 (오늘부터 종료일까지)
-        remaining_days = (end_date - today).days + 1 if end_date >= today else 0
-        
+        remaining_days = max(0, (end_date - today).days + 1)
+
         # 환불 금액 계산 (일별 비례)
         refund_amount = 0
-        if total_days > 0 and remaining_days > 0:
+        if remaining_days > 0 and slot.slot_price:
             refund_amount = int((slot.slot_price / total_days) * remaining_days)
-        
+
         # 환불 요청 생성
         refund_request = SlotRefundRequest(
             requester_id=current_user.id,
@@ -3726,6 +3743,7 @@ def toggle_slot_api():
 # 홈페이지 라우트는 위에 이미 정의되어 있음
 
 @app.route('/shopping', methods=['GET', 'POST'])
+@login_required
 def shopping():
     """Handle Naver Shopping form submission."""
     if request.method == 'POST':
@@ -3850,6 +3868,7 @@ def shopping():
     return render_template('shopping.html', shopping_data_list=shopping_data_list)
 
 @app.route('/place', methods=['GET', 'POST'])
+@login_required
 def place():
     """Handle Naver Place form submission."""
     if request.method == 'POST':
