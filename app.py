@@ -1061,7 +1061,12 @@ def admin_bulk_approve():
 def admin_approve_request(approval_id, action):
     """승인 요청 처리 및 정산 자동 처리"""
     approval = SlotApproval.query.get_or_404(approval_id)
-    
+
+    # SECURITY FIX #4: Prevent double-approval vulnerability
+    if approval.status != 'pending':
+        flash('이 승인 요청은 이미 처리되었습니다.', 'warning')
+        return redirect(url_for('admin_approvals'))
+
     if action == 'approve':
         approval.status = 'approved'
         approval.approver_id = current_user.id
@@ -2064,11 +2069,16 @@ def distributor_approve_quota(request_id):
 def distributor_approve_request(approval_id, action):
     """총판의 승인 요청 처리 및 정산 자동 처리"""
     approval = SlotApproval.query.get_or_404(approval_id)
-    
+
     # 이 승인 요청이 자신의 대행사에서 온 것인지 확인
     if approval.requester.parent_id != current_user.id:
         abort(403)
-    
+
+    # SECURITY FIX #4: Prevent double-approval vulnerability
+    if approval.status != 'pending':
+        flash('이 승인 요청은 이미 처리되었습니다.', 'warning')
+        return redirect(url_for('distributor_approvals'))
+
     if action == 'approve':
         approval.status = 'approved'
         approval.approver_id = current_user.id
@@ -2689,15 +2699,23 @@ def admin_approve_refund(refund_id, action):
 def edit_shopping_slot(slot_id):
     """쇼핑 슬롯 수정 (총판/대행사 공통)"""
     shopping_slot = ShoppingSlot.query.get_or_404(slot_id)
-    
-    # 권한 검사: 슬롯 소유자이거나 소유자의 총판인 경우만 접근 가능
-    if not (shopping_slot.user_id == current_user.id or 
-            (current_user.is_distributor() and shopping_slot.user.parent_id == current_user.id)):
-        flash('권한이 없습니다.', 'danger')
-        if current_user.is_distributor():
-            return redirect(url_for('distributor_slots', type='shopping'))
-        else:
-            return redirect(url_for('agency_shopping_slots'))
+
+    # SECURITY FIX #14: Enhanced IDOR protection with explicit ownership verification
+    is_owner = False
+
+    # Check if user directly owns this slot
+    if shopping_slot.user_id == current_user.id:
+        is_owner = True
+    # Check if user is a distributor managing this agency
+    elif current_user.is_distributor():
+        slot_owner = shopping_slot.user
+        if slot_owner and slot_owner.parent_id == current_user.id:
+            # Verify the slot owner is actually an agency (not another distributor)
+            if slot_owner.is_agency():
+                is_owner = True
+
+    if not is_owner:
+        abort(403)
     
     try:
         # 폼 데이터 처리
@@ -2878,46 +2896,63 @@ def create_shopping_slot():
         if end_date:
             end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
         
-        # 할당량 확인
-        if not current_user.quota or not current_user.quota.can_use_shopping_slot():
+        # SECURITY FIX #5: Quota validation with race condition protection
+        quota = current_user.quota
+        if not quota:
+            flash('슬롯 할당량 정보가 없습니다. 총판에게 문의하세요.', 'danger')
+            return redirect(url_for('agency_shopping_slots'))
+
+        # Initial quota check
+        if quota.shopping_slots_used >= quota.shopping_slots_limit:
             flash('사용 가능한 쇼핑 슬롯 할당량이 없습니다. 총판에게 추가 할당량을 요청하세요.', 'danger')
             return redirect(url_for('agency_shopping_slots'))
-        
-        # 슬롯 생성
-        shopping_slot = ShoppingSlot(
-            user_id=current_user.id,
-            slot_name=slot_name,
-            store_type=store_type,
-            product_id=product_id,
-            product_name=product_name,
-            keywords=keywords,
-            price=price if price else None,
-            sale_price=sale_price if sale_price else None,
-            start_date=start_date,
-            end_date=end_date,
-            bid_type=bid_type,
-            slot_price=slot_price if slot_price else None,
-            notes=notes,
-            product_image_url="/static/img/placeholder-product.svg"
-        )
-        
-        db.session.add(shopping_slot)
-        db.session.flush()  # ID 생성을 위해 플러시
-        
-        # 승인 요청 생성
-        approval = SlotApproval(
-            requester_id=current_user.id,
-            shopping_slot_id=shopping_slot.id,
-            approval_type='create'
-        )
-        
-        db.session.add(approval)
-        
-        # 사용된 슬롯 카운트 증가
-        if current_user.quota:
-            current_user.quota.shopping_slots_used += 1
-        
-        db.session.commit()
+
+        try:
+            # 슬롯 생성
+            shopping_slot = ShoppingSlot(
+                user_id=current_user.id,
+                slot_name=slot_name,
+                store_type=store_type,
+                product_id=product_id,
+                product_name=product_name,
+                keywords=keywords,
+                price=price if price else None,
+                sale_price=sale_price if sale_price else None,
+                start_date=start_date,
+                end_date=end_date,
+                bid_type=bid_type,
+                slot_price=slot_price if slot_price else None,
+                notes=notes,
+                product_image_url="/static/img/placeholder-product.svg"
+            )
+
+            db.session.add(shopping_slot)
+            db.session.flush()  # ID 생성을 위해 플러시
+
+            # SECURITY: Re-check quota after flush to prevent race conditions
+            db.session.refresh(quota)  # Refresh quota from database
+            if quota.shopping_slots_used >= quota.shopping_slots_limit:
+                db.session.rollback()
+                flash('슬롯 할당량이 초과되었습니다. 다시 시도해주세요.', 'danger')
+                return redirect(url_for('agency_shopping_slots'))
+
+            # Update quota
+            quota.shopping_slots_used += 1
+
+            # 승인 요청 생성
+            approval = SlotApproval(
+                requester_id=current_user.id,
+                shopping_slot_id=shopping_slot.id,
+                approval_type='create'
+            )
+
+            db.session.add(approval)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating shopping slot: {e}")
+            flash('슬롯 생성 중 오류가 발생했습니다.', 'danger')
+            return redirect(url_for('agency_shopping_slots'))
         
         flash('쇼핑 슬롯이 생성되었고 승인 요청이 제출되었습니다.', 'success')
         return redirect(url_for('agency_shopping_slots'))
@@ -3200,11 +3235,10 @@ def request_slot_quota():
 def edit_place_slot(slot_id):
     """플레이스 슬롯 수정"""
     place_slot = PlaceSlot.query.get_or_404(slot_id)
-    
-    # 슬롯 소유권 확인
+
+    # SECURITY FIX #14: Enhanced ownership verification
     if place_slot.user_id != current_user.id:
-        flash('권한이 없습니다.', 'danger')
-        return redirect(url_for('agency_place_slots'))
+        abort(403)
     
     # 폼 데이터 처리
     slot_name = request.form.get('slot_name')
@@ -3355,46 +3389,63 @@ def create_place_slot():
         if deadline_date:
             deadline_date = datetime.strptime(deadline_date, '%Y-%m-%d').date()
         
-        # 할당량 확인
-        if not current_user.quota or not current_user.quota.can_use_place_slot():
+        # SECURITY FIX #5: Quota validation with race condition protection
+        quota = current_user.quota
+        if not quota:
+            flash('슬롯 할당량 정보가 없습니다. 총판에게 문의하세요.', 'danger')
+            return redirect(url_for('agency_place_slots'))
+
+        # Initial quota check
+        if quota.place_slots_used >= quota.place_slots_limit:
             flash('사용 가능한 플레이스 슬롯 할당량이 없습니다. 총판에게 추가 할당량을 요청하세요.', 'danger')
             return redirect(url_for('agency_place_slots'))
-        
-        # 슬롯 생성
-        place_slot = PlaceSlot(
-            user_id=current_user.id,
-            slot_name=slot_name,
-            place_id=place_id,
-            business_category=business_category,
-            business_type=business_type,
-            place_name=place_name,
-            address=address,
-            operation_status=operation_status,
-            slot_type=slot_type,
-            slot_price=slot_price if slot_price else None,
-            notes=notes,
-            start_date=start_date,
-            end_date=end_date,
-            deadline_date=deadline_date
-        )
-        
-        db.session.add(place_slot)
-        db.session.flush()  # ID 생성을 위해 플러시
-        
-        # 승인 요청 생성
-        approval = SlotApproval(
-            requester_id=current_user.id,
-            place_slot_id=place_slot.id,
-            approval_type='create'
-        )
-        
-        db.session.add(approval)
-        
-        # 사용된 슬롯 카운트 증가
-        if current_user.quota:
-            current_user.quota.place_slots_used += 1
-            
-        db.session.commit()
+
+        try:
+            # 슬롯 생성
+            place_slot = PlaceSlot(
+                user_id=current_user.id,
+                slot_name=slot_name,
+                place_id=place_id,
+                business_category=business_category,
+                business_type=business_type,
+                place_name=place_name,
+                address=address,
+                operation_status=operation_status,
+                slot_type=slot_type,
+                slot_price=slot_price if slot_price else None,
+                notes=notes,
+                start_date=start_date,
+                end_date=end_date,
+                deadline_date=deadline_date
+            )
+
+            db.session.add(place_slot)
+            db.session.flush()  # ID 생성을 위해 플러시
+
+            # SECURITY: Re-check quota after flush to prevent race conditions
+            db.session.refresh(quota)  # Refresh quota from database
+            if quota.place_slots_used >= quota.place_slots_limit:
+                db.session.rollback()
+                flash('슬롯 할당량이 초과되었습니다. 다시 시도해주세요.', 'danger')
+                return redirect(url_for('agency_place_slots'))
+
+            # Update quota
+            quota.place_slots_used += 1
+
+            # 승인 요청 생성
+            approval = SlotApproval(
+                requester_id=current_user.id,
+                place_slot_id=place_slot.id,
+                approval_type='create'
+            )
+
+            db.session.add(approval)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error creating place slot: {e}")
+            flash('슬롯 생성 중 오류가 발생했습니다.', 'danger')
+            return redirect(url_for('agency_place_slots'))
         
         flash('플레이스 슬롯이 생성되었고 승인 요청이 제출되었습니다.', 'success')
         return redirect(url_for('agency_place_slots'))
