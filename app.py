@@ -97,8 +97,13 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 # Configure the database
 # Railway uses postgres:// but SQLAlchemy requires postgresql://
 database_url = os.environ.get("DATABASE_URL")
-if database_url and database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql://", 1)
+if database_url:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+else:
+    # Fallback to SQLite for local development if DATABASE_URL is not set
+    logger.warning("DATABASE_URL not set, using SQLite for local development")
+    database_url = "sqlite:///local_dev.db"
 app.config["SQLALCHEMY_DATABASE_URI"] = database_url
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
