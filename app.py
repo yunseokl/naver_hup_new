@@ -1255,18 +1255,28 @@ def admin_approve_request(approval_id, action):
         approval.status = 'rejected'
         approval.approver_id = current_user.id
         approval.processed_at = datetime.utcnow()
-        
-        # 슬롯 상태 업데이트
+
+        # 슬롯 상태 업데이트 및 할당량 복구
         if approval.slot_type == 'shopping':
             approval.shopping_slot.status = 'rejected'
+            # 할당량 복구 (신규 생성 요청인 경우에만)
+            if approval.approval_type == 'create':
+                requester_quota = SlotQuota.query.filter_by(user_id=approval.requester_id).first()
+                if requester_quota and requester_quota.shopping_slots_used > 0:
+                    requester_quota.shopping_slots_used -= 1
         else:
             approval.place_slot.status = 'rejected'
-        
+            # 할당량 복구 (신규 생성 요청인 경우에만)
+            if approval.approval_type == 'create':
+                requester_quota = SlotQuota.query.filter_by(user_id=approval.requester_id).first()
+                if requester_quota and requester_quota.place_slots_used > 0:
+                    requester_quota.place_slots_used -= 1
+
         flash('승인 요청이 거절되었습니다.', 'success')
-    
+
     # 모든 변경사항 커밋
     db.session.commit()
-    
+
     app.logger.info(f"슬롯 승인/거절 처리 완료: approval_id={approval_id}, action={action}")
     return redirect(url_for('admin_approvals'))
 
@@ -2258,15 +2268,25 @@ def distributor_approve_request(approval_id, action):
         approval.status = 'rejected'
         approval.approver_id = current_user.id
         approval.processed_at = datetime.utcnow()
-        
-        # 슬롯 상태 업데이트
+
+        # 슬롯 상태 업데이트 및 할당량 복구
         if approval.slot_type == 'shopping':
             approval.shopping_slot.status = 'rejected'
+            # 할당량 복구 (신규 생성 요청인 경우에만)
+            if approval.approval_type == 'create':
+                requester_quota = SlotQuota.query.filter_by(user_id=approval.requester_id).first()
+                if requester_quota and requester_quota.shopping_slots_used > 0:
+                    requester_quota.shopping_slots_used -= 1
         else:
             approval.place_slot.status = 'rejected'
-        
+            # 할당량 복구 (신규 생성 요청인 경우에만)
+            if approval.approval_type == 'create':
+                requester_quota = SlotQuota.query.filter_by(user_id=approval.requester_id).first()
+                if requester_quota and requester_quota.place_slots_used > 0:
+                    requester_quota.place_slots_used -= 1
+
         flash('승인 요청이 거절되었습니다.', 'success')
-    
+
     db.session.commit()
     return redirect(url_for('distributor_approvals'))
 
@@ -2740,33 +2760,35 @@ def edit_shopping_slot(slot_id):
         shopping_slot.product_image_url = product_image_url
         shopping_slot.notes = notes
         
-        # 상태 업데이트 (pending으로 변경)
+        # 상태 업데이트 로직
         # 총판이 자신의 슬롯을 수정하는 경우에는 바로 approved로 변경
         if current_user.is_distributor() and shopping_slot.user_id == current_user.id:
             shopping_slot.status = 'approved'
             flash('쇼핑 슬롯 정보가 수정되었습니다.', 'success')
-        elif shopping_slot.status == 'empty':
-            shopping_slot.status = 'pending'  # 빈 슬롯 -> 승인 대기
-            
+        elif shopping_slot.status in ('empty', 'rejected'):
+            # 빈 슬롯이거나 거절된 슬롯인 경우 승인 요청 상태로 변경
+            old_status = shopping_slot.status
+            shopping_slot.status = 'pending'
+
             # 승인 요청 생성
             approval = SlotApproval(
                 requester_id=current_user.id,
                 shopping_slot_id=shopping_slot.id,
-                approval_type='create'
+                approval_type='create' if old_status == 'empty' else 'update'
             )
-            
+
             db.session.add(approval)
-            flash('빈 슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
+            flash('슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
         elif shopping_slot.status == 'approved' and current_user.is_agency():
             shopping_slot.status = 'pending'  # 승인됨 -> 변경사항 대기
-            
+
             # 승인 요청 생성
             approval = SlotApproval(
                 requester_id=current_user.id,
                 shopping_slot_id=shopping_slot.id,
                 approval_type='update'
             )
-            
+
             db.session.add(approval)
             flash('쇼핑 슬롯 정보가 수정되었고, 변경사항에 대한 승인 요청이 제출되었습니다.', 'success')
         else:
@@ -3188,15 +3210,18 @@ def request_slot_quota():
 # 플레이스 슬롯 관련 라우트
 @app.route('/place-slots/edit/<int:slot_id>', methods=['POST'])
 @login_required
-@agency_required
 def edit_place_slot(slot_id):
-    """플레이스 슬롯 수정"""
+    """플레이스 슬롯 수정 (총판/대행사 공통)"""
     place_slot = PlaceSlot.query.get_or_404(slot_id)
-    
-    # 슬롯 소유권 확인
-    if place_slot.user_id != current_user.id:
+
+    # 권한 검사: 슬롯 소유자이거나 소유자의 총판인 경우만 접근 가능
+    if not (place_slot.user_id == current_user.id or
+            (current_user.is_distributor() and place_slot.user.parent_id == current_user.id)):
         flash('권한이 없습니다.', 'danger')
-        return redirect(url_for('agency_place_slots'))
+        if current_user.is_distributor():
+            return redirect(url_for('distributor_slots', type='place'))
+        else:
+            return redirect(url_for('agency_place_slots'))
     
     # 폼 데이터 처리
     slot_name = request.form.get('slot_name')
@@ -3234,48 +3259,60 @@ def edit_place_slot(slot_id):
     place_slot.end_date = end_date
     place_slot.deadline_date = deadline_date
     
-    # 빈 슬롯인 경우 승인 요청 상태로 변경
-    if place_slot.status == 'empty':
+    # 상태 업데이트 로직
+    # 총판이 자신의 슬롯을 수정하는 경우에는 바로 approved로 변경
+    if current_user.is_distributor() and place_slot.user_id == current_user.id:
+        place_slot.status = 'approved'
+        flash('플레이스 슬롯 정보가 수정되었습니다.', 'success')
+    elif place_slot.status in ('empty', 'rejected'):
+        # 빈 슬롯이거나 거절된 슬롯인 경우 승인 요청 상태로 변경
         place_slot.status = 'pending'
-        
+
         # 승인 요청 생성
         approval = SlotApproval(
             requester_id=current_user.id,
             place_slot_id=place_slot.id,
-            approval_type='create'
+            approval_type='create' if place_slot.status == 'empty' else 'update'
         )
-        
+
         db.session.add(approval)
-        flash('빈 슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
-    # 이미 승인된 슬롯인 경우 업데이트 요청 생성
-    elif place_slot.status == 'approved':
+        flash('슬롯 정보가 등록되었고, 승인 요청이 제출되었습니다.', 'success')
+    elif place_slot.status == 'approved' and current_user.is_agency():
+        # 이미 승인된 슬롯을 대행사가 수정하는 경우
+        place_slot.status = 'pending'
+
         # 승인 요청 생성
         approval = SlotApproval(
             requester_id=current_user.id,
             place_slot_id=place_slot.id,
             approval_type='update'
         )
-        
+
         db.session.add(approval)
         flash('플레이스 슬롯 정보가 수정되었고, 변경사항에 대한 승인 요청이 제출되었습니다.', 'success')
     else:
         flash('플레이스 슬롯 정보가 수정되었습니다.', 'success')
-    
+
     # 수정 내용 저장
     db.session.commit()
-    
+
+    # 리다이렉트 경로 결정
+    if current_user.is_distributor():
+        return redirect(url_for('distributor_slots', type='place'))
     return redirect(url_for('agency_place_slots'))
 
 @app.route('/place-slots/delete/<int:slot_id>')
 @login_required
-@agency_required
 def delete_place_slot(slot_id):
-    """플레이스 슬롯 삭제"""
+    """플레이스 슬롯 삭제 (총판/대행사 공통)"""
     place_slot = PlaceSlot.query.get_or_404(slot_id)
-    
-    # 슬롯 소유권 확인
-    if place_slot.user_id != current_user.id:
+
+    # 권한 검사: 슬롯 소유자이거나 소유자의 총판인 경우만 접근 가능
+    if not (place_slot.user_id == current_user.id or
+            (current_user.is_distributor() and place_slot.user.parent_id == current_user.id)):
         flash('권한이 없습니다.', 'danger')
+        if current_user.is_distributor():
+            return redirect(url_for('distributor_slots', type='place'))
         return redirect(url_for('agency_place_slots'))
     
     # 슬롯이 정산에 포함된 경우 삭제 불가
@@ -4570,44 +4607,50 @@ def bulk_delete_shopping_slots():
     # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회 가능하도록 수정
     agency_ids = [agency.id for agency in current_user.agencies.all()]
     user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
-    
+
     # 필터 적용
     slots = ShoppingSlot.query.filter(ShoppingSlot.user_id.in_(user_ids)).all()
-    
+
     if not slots:
         return jsonify({'success': False, 'message': "삭제할 슬롯이 없습니다."}), 404
-    
-    count = len(slots)
-    
-    # 슬롯 상태에 따라 다르게 처리
-    pending_slots = []
-    other_slots = []
-    
+
+    deleted_count = 0
+    skipped_count = 0
+    quota_updates = {}  # user_id: 삭제된 슬롯 수
+
     for slot in slots:
-        if slot.status == 'pending':
-            # 승인 대기 중인 슬롯은 승인 요청도 함께 삭제
-            pending_slots.append(slot)
-        else:
-            other_slots.append(slot)
-    
-    # 승인 대기 중인 슬롯의 승인 요청 삭제
-    for slot in pending_slots:
-        approvals = SlotApproval.query.filter_by(shopping_slot_id=slot.id).all()
-        for approval in approvals:
-            db.session.delete(approval)
-    
-    # 모든 슬롯 삭제
-    for slot in slots:
+        # 정산에 포함된 슬롯은 삭제 불가
+        if SettlementItem.query.filter_by(shopping_slot_id=slot.id).first():
+            skipped_count += 1
+            continue
+
+        # 승인 요청 삭제
+        SlotApproval.query.filter_by(shopping_slot_id=slot.id).delete()
+
+        # 할당량 업데이트를 위해 사용자별로 카운트
+        if slot.user_id not in quota_updates:
+            quota_updates[slot.user_id] = 0
+        quota_updates[slot.user_id] += 1
+
+        # 슬롯 삭제
         db.session.delete(slot)
-    
-    # 할당량 사용 업데이트
-    quota = SlotQuota.query.filter_by(user_id=current_user.id).first()
-    if quota:
-        quota.shopping_slots_used = 0
-        
+        deleted_count += 1
+
+    # 각 사용자의 할당량 업데이트
+    for user_id, count in quota_updates.items():
+        quota = SlotQuota.query.filter_by(user_id=user_id).first()
+        if quota and quota.shopping_slots_used >= count:
+            quota.shopping_slots_used -= count
+        elif quota:
+            quota.shopping_slots_used = 0
+
     db.session.commit()
-    
-    return jsonify({'success': True, 'count': count})
+
+    message = f'{deleted_count}개 슬롯이 삭제되었습니다.'
+    if skipped_count > 0:
+        message += f' (정산에 포함된 {skipped_count}개 슬롯은 제외됨)'
+
+    return jsonify({'success': True, 'count': deleted_count, 'skipped': skipped_count, 'message': message})
 
 
 @app.route('/bulk-delete-place-slots', methods=['POST'])
@@ -4619,44 +4662,50 @@ def bulk_delete_place_slots():
     # 대행사의 슬롯 + 총판 자신의 슬롯 함께 조회 가능하도록 수정
     agency_ids = [agency.id for agency in current_user.agencies.all()]
     user_ids = agency_ids + [current_user.id]  # 총판 자신의 ID 추가
-    
+
     # 필터 적용
     slots = PlaceSlot.query.filter(PlaceSlot.user_id.in_(user_ids)).all()
-    
+
     if not slots:
         return jsonify({'success': False, 'message': "삭제할 슬롯이 없습니다."}), 404
-    
-    count = len(slots)
-    
-    # 슬롯 상태에 따라 다르게 처리
-    pending_slots = []
-    other_slots = []
-    
+
+    deleted_count = 0
+    skipped_count = 0
+    quota_updates = {}  # user_id: 삭제된 슬롯 수
+
     for slot in slots:
-        if slot.status == 'pending':
-            # 승인 대기 중인 슬롯은 승인 요청도 함께 삭제
-            pending_slots.append(slot)
-        else:
-            other_slots.append(slot)
-    
-    # 승인 대기 중인 슬롯의 승인 요청 삭제
-    for slot in pending_slots:
-        approvals = SlotApproval.query.filter_by(place_slot_id=slot.id).all()
-        for approval in approvals:
-            db.session.delete(approval)
-    
-    # 모든 슬롯 삭제
-    for slot in slots:
+        # 정산에 포함된 슬롯은 삭제 불가
+        if SettlementItem.query.filter_by(place_slot_id=slot.id).first():
+            skipped_count += 1
+            continue
+
+        # 승인 요청 삭제
+        SlotApproval.query.filter_by(place_slot_id=slot.id).delete()
+
+        # 할당량 업데이트를 위해 사용자별로 카운트
+        if slot.user_id not in quota_updates:
+            quota_updates[slot.user_id] = 0
+        quota_updates[slot.user_id] += 1
+
+        # 슬롯 삭제
         db.session.delete(slot)
-    
-    # 할당량 사용 업데이트
-    quota = SlotQuota.query.filter_by(user_id=current_user.id).first()
-    if quota:
-        quota.place_slots_used = 0
-        
+        deleted_count += 1
+
+    # 각 사용자의 할당량 업데이트
+    for user_id, count in quota_updates.items():
+        quota = SlotQuota.query.filter_by(user_id=user_id).first()
+        if quota and quota.place_slots_used >= count:
+            quota.place_slots_used -= count
+        elif quota:
+            quota.place_slots_used = 0
+
     db.session.commit()
-    
-    return jsonify({'success': True, 'count': count})
+
+    message = f'{deleted_count}개 슬롯이 삭제되었습니다.'
+    if skipped_count > 0:
+        message += f' (정산에 포함된 {skipped_count}개 슬롯은 제외됨)'
+
+    return jsonify({'success': True, 'count': deleted_count, 'skipped': skipped_count, 'message': message})
 
 
 @app.route('/selected-delete-shopping-slots', methods=['POST'])
