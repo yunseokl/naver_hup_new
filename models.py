@@ -72,121 +72,208 @@ class ShoppingSlot(db.Model):
     """쇼핑 슬롯 모델"""
     id = db.Column(db.Integer, primary_key=True)
     is_selected = db.Column(db.Boolean, default=False)  # 선택 여부
-    
+
     # 소유자 정보
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    
+
     # 상태 정보
     status = db.Column(db.String(20), default='pending')  # empty, pending, approved, rejected, live, inactive, refund_requested, refunded
-    
+
     # 슬롯 기본 정보
     slot_name = db.Column(db.String(100), nullable=False)  # 슬롯 이름
-    store_type = db.Column(db.String(50))  # 스마트스토어/쇼핑 
-    product_id = db.Column(db.String(100))  # 광고품ID
+    store_type = db.Column(db.String(50))  # 스마트스토어/쇼핑
+    product_id = db.Column(db.String(100))  # 광고품ID (= API product_id)
     shopping_campaign_id = db.Column(db.String(100))  # 쇼핑캠페인ID
     slot_type = db.Column(db.String(50), default='standard')  # 슬롯 유형 (standard: 일반, premium: 프리미엄)
     period = db.Column(db.String(50))  # 기간
-    
+
     # 제품 관련 정보
-    product_name = db.Column(db.String(200))  # 상품명
+    product_name = db.Column(db.String(200))  # 상품명 (= API product_name)
     keywords = db.Column(db.Text)  # 키워드 (쉼표로 구분)
     store_name = db.Column(db.String(100))  # 스토어명
     price = db.Column(db.Integer)  # 가격
     sale_price = db.Column(db.Integer)  # 세일가격
     product_image_url = db.Column(db.String(255))  # 제품 이미지 URL
-    
+
     # 성과 관련 정보
     impressions = db.Column(db.String(50))  # 노출수
     clicks = db.Column(db.String(50))  # 클릭수
     amount = db.Column(db.String(50))  # 금액
-    
+
     # 날짜 정보
     start_date = db.Column(db.Date)  # 시작일
     end_date = db.Column(db.Date)  # 종료일
-    
+
     # 기타 정보
     bid_type = db.Column(db.String(50))  # 입찰방식
     targeting = db.Column(db.String(20))  # 타겟팅
-    
+
     # 슬롯 관련 정보
     slot_price = db.Column(db.Integer)  # 슬롯 단가 (원)
     admin_price = db.Column(db.Integer)  # 어드민 정산가 (원)
     settlement_status = db.Column(db.String(20), default='pending')  # 정산 상태 (pending, completed)
     notes = db.Column(db.Text)  # 메모
-    
+
     # 파일 정보
     filename = db.Column(db.String(255))  # 업로드된 파일명
     original_filename = db.Column(db.String(255))  # 원래 파일명
-    
+
+    # ========== 캠페인 API 연동 필드 ==========
+    # 캠페인 기본 정보
+    campaign_code = db.Column(db.String(50))  # API에서 발급받은 캠페인 코드
+    campaign_type = db.Column(db.Integer, default=210)  # 캠페인 타입 (210: 네이버 쇼핑 방문)
+    class_type = db.Column(db.Integer, default=11)  # 상품 등급 (11: 알파, 12: 브라보, 13: 찰리)
+    daily_target = db.Column(db.Integer, default=100)  # 일목표 (100 이상)
+
+    # 키워드 정보
+    rank_keyword = db.Column(db.String(200))  # 순위 키워드
+    search_keyword = db.Column(db.Text)  # 검색어 (","로 구분, 50개까지)
+
+    # 상품 URL 정보
+    product_url = db.Column(db.String(500))  # 쇼핑 상품 URL
+
+    # 가격비교 정보 (쇼핑 가격비교 상품용)
+    is_catalog = db.Column(db.Boolean, default=False)  # 가격비교 여부
+    compare_name = db.Column(db.String(200))  # 가격비교 상품 이름
+    compare_id = db.Column(db.String(100))  # 가격비교 상품 ID
+
+    # API 상태 정보
+    api_status = db.Column(db.Integer, default=0)  # API 상태 (0: 미시작, 1: 진행중, 2: 완료)
+    api_current_count = db.Column(db.Integer, default=0)  # 현재 완료 카운트
+    api_registered_at = db.Column(db.DateTime)  # API 등록 시간
+    api_error_message = db.Column(db.String(255))  # API 에러 메시지
+    # ==========================================
+
     # 시스템 정보
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    
+
     # 승인 관계
-    approvals = db.relationship('SlotApproval', backref='shopping_slot', lazy='dynamic', 
+    approvals = db.relationship('SlotApproval', backref='shopping_slot', lazy='dynamic',
                               foreign_keys='SlotApproval.shopping_slot_id')
-    
+
     def __repr__(self):
         return f'<ShoppingSlot {self.slot_name}>'
+
+    def to_campaign_dict(self, campaign_code_origin=None):
+        """캠페인 등록 API용 딕셔너리 반환"""
+        data = {
+            "campaign_type": self.campaign_type or 210,
+            "campaign_code_origin": campaign_code_origin or f"SHOP_{self.id}",
+            "daily_target": self.daily_target or 100,
+            "is_catalog": self.is_catalog or False,
+            "product_name": self.product_name or "",
+            "product_id": self.product_id or "",
+            "rank_keyword": self.rank_keyword or "",
+            "search_keyword": self.search_keyword or self.keywords or ""
+        }
+
+        # 가격비교가 아닌 경우 product_url 필요
+        if not self.is_catalog:
+            data["product_url"] = self.product_url or ""
+        else:
+            # 가격비교인 경우 compare 정보 필요
+            data["compare_name"] = self.compare_name or ""
+            data["compare_id"] = self.compare_id or ""
+
+        return data
 
 # 플레이스 슬롯 모델
 class PlaceSlot(db.Model):
     """플레이스 슬롯 모델"""
     id = db.Column(db.Integer, primary_key=True)
     is_selected = db.Column(db.Boolean, default=False)  # 선택 여부
-    
+
     # 소유자 정보
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    
+
     # 상태 정보
     status = db.Column(db.String(20), default='pending')  # empty, pending, approved, rejected, live, inactive, refund_requested, refunded
-    
+
     # 슬롯 기본 정보
     slot_name = db.Column(db.String(100), nullable=False)  # 슬롯 이름
-    place_id = db.Column(db.String(100))  # 광고주ID
+    place_id = db.Column(db.String(100))  # 플레이스 ID (= API place_id)
     business_category = db.Column(db.String(100))  # 업종분류 코드
     business_type = db.Column(db.String(100))  # 업종분류 명
-    slot_type = db.Column(db.String(50), default='search')  # 슬롯 유형 (search: 검색 유입, save: 저장)
-    
+    slot_type = db.Column(db.String(50), default='traffic')  # 슬롯 유형 (traffic: 방문/트래픽, save: 저장)
+
     # 장소 관련 정보
-    place_name = db.Column(db.String(200))  # 키워드
+    place_name = db.Column(db.String(200))  # 플레이스 이름 (= API place_name)
     address = db.Column(db.String(300))  # 주소
-    
+
     # 성과 관련 정보
     impressions = db.Column(db.String(50))  # 노출수
     clicks = db.Column(db.String(50))  # 클릭수
     cost = db.Column(db.String(50))  # 비용
-    
+
     # 운영 상태 정보
     operation_status = db.Column(db.String(100))  # 운영 상태 (예: "심사중", "ON", "OFF")
     status_reason = db.Column(db.String(100))  # 상태 이유
     status_detail = db.Column(db.String(255))  # 상태 상세 (예: "경쟁입찰(PCMB)")
-    
+
     # 날짜 정보
     start_date = db.Column(db.Date)  # 시작일
     end_date = db.Column(db.Date)  # 종료일
     deadline_date = db.Column(db.Date)  # 마감일
-    
+
     # 슬롯 관련 정보
     slot_price = db.Column(db.Integer)  # 슬롯 단가 (원)
     admin_price = db.Column(db.Integer)  # 어드민 정산가 (원)
     settlement_status = db.Column(db.String(20), default='pending')  # 정산 상태 (pending, completed)
     notes = db.Column(db.Text)  # 메모
-    
+
     # 파일 정보
     filename = db.Column(db.String(255))  # 업로드된 파일명
     original_filename = db.Column(db.String(255))  # 원래 파일명
-    
+
+    # ========== 캠페인 API 연동 필드 ==========
+    # 캠페인 기본 정보
+    campaign_code = db.Column(db.String(50))  # API에서 발급받은 캠페인 코드
+    campaign_type = db.Column(db.Integer, default=211)  # 캠페인 타입 (211: 플레이스 방문, 100: 플레이스 저장)
+    class_type = db.Column(db.Integer, default=11)  # 상품 등급 (11: 알파, 12: 브라보, 13: 찰리)
+    daily_target = db.Column(db.Integer, default=100)  # 일목표 (100 이상, 저장은 더 작을 수 있음)
+
+    # 키워드 정보
+    rank_keyword = db.Column(db.String(200))  # 순위 키워드
+    search_keyword = db.Column(db.Text)  # 검색어 (","로 구분, 50개까지)
+
+    # 플레이스 URL 정보
+    place_url = db.Column(db.String(500))  # 플레이스 URL (= API place_url)
+
+    # API 상태 정보
+    api_status = db.Column(db.Integer, default=0)  # API 상태 (0: 미시작, 1: 진행중, 2: 완료)
+    api_current_count = db.Column(db.Integer, default=0)  # 현재 완료 카운트
+    api_registered_at = db.Column(db.DateTime)  # API 등록 시간
+    api_error_message = db.Column(db.String(255))  # API 에러 메시지
+    # ==========================================
+
     # 시스템 정보
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    
+
     # 승인 관계
     approvals = db.relationship('SlotApproval', backref='place_slot', lazy='dynamic',
                               foreign_keys='SlotApproval.place_slot_id')
-    
+
     def __repr__(self):
         return f'<PlaceSlot {self.slot_name}>'
+
+    def to_campaign_dict(self, campaign_code_origin=None):
+        """캠페인 등록 API용 딕셔너리 반환"""
+        # slot_type에 따라 campaign_type 결정
+        # traffic(방문) -> 211, save(저장) -> 100
+        campaign_type = 100 if self.slot_type == 'save' else 211
+
+        return {
+            "campaign_type": self.campaign_type or campaign_type,
+            "campaign_code_origin": campaign_code_origin or f"PLACE_{self.id}",
+            "daily_target": self.daily_target or (10 if self.slot_type == 'save' else 100),
+            "place_name": self.place_name or "",
+            "place_url": self.place_url or "",
+            "place_id": self.place_id or "",
+            "rank_keyword": self.rank_keyword or "",
+            "search_keyword": self.search_keyword or ""
+        }
 
 # 슬롯 승인 요청 모델
 class SlotApproval(db.Model):

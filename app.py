@@ -1,6 +1,7 @@
 import os
 import logging
 import uuid
+import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from werkzeug.utils import secure_filename
@@ -81,6 +82,180 @@ def validate_password_complexity(password):
         return False, '비밀번호에는 숫자가 최소 1개 포함되어야 합니다.'
     
     return True, ''
+
+
+# ========== 캠페인 API 서비스 ==========
+class CampaignAPIService:
+    """Bizfit 캠페인 API 연동 서비스"""
+
+    # API 설정
+    PARTNER_KEY = os.environ.get("BIZFIT_PARTNER_KEY", "")
+    API_BASE_URL = os.environ.get("BIZFIT_API_URL", "https://partner.bizfit.kr/bfnew/campaign")
+    TEST_API_URL = "http://106.248.241.115/bizfit-partner-web/bfnew/campaign"
+
+    # 캠페인 타입 코드
+    CAMPAIGN_TYPE_SHOPPING = 210  # 네이버 쇼핑 방문
+    CAMPAIGN_TYPE_PLACE_VISIT = 211  # 네이버 플레이스 방문
+    CAMPAIGN_TYPE_PLACE_SAVE = 100  # 네이버 플레이스 저장
+
+    # 상품 등급 코드
+    CLASS_ALFA = 11
+    CLASS_BRAVO = 12
+    CLASS_CHARLIE = 13
+
+    # API 상태 코드
+    STATUS_NOT_STARTED = 0
+    STATUS_RUNNING = 1
+    STATUS_FINISHED = 2
+
+    @classmethod
+    def get_api_url(cls, endpoint, use_test=False):
+        """API URL 반환"""
+        base = cls.TEST_API_URL if use_test else cls.API_BASE_URL
+        return f"{base}/{endpoint}"
+
+    @classmethod
+    def register_campaigns(cls, slots, class_type=11, use_test=False):
+        """
+        캠페인 등록 API 호출
+
+        Args:
+            slots: ShoppingSlot 또는 PlaceSlot 객체 리스트
+            class_type: 상품 등급 (11: 알파, 12: 브라보, 13: 찰리)
+            use_test: 테스트 API 사용 여부
+
+        Returns:
+            dict: API 응답 결과
+        """
+        if not cls.PARTNER_KEY:
+            return {
+                "code": -99,
+                "message": "BIZFIT_PARTNER_KEY 환경 변수가 설정되지 않았습니다.",
+                "success_count": 0,
+                "fail_count": len(slots)
+            }
+
+        campaign_list = []
+        for slot in slots:
+            campaign_list.append(slot.to_campaign_dict())
+
+        payload = {
+            "partner_key": cls.PARTNER_KEY,
+            "class_type": class_type,
+            "campaign_count": len(campaign_list),
+            "campaign_list": campaign_list
+        }
+
+        try:
+            url = cls.get_api_url("register_campaign.php", use_test)
+            response = requests.post(
+                url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"캠페인 등록 API 호출 실패: {str(e)}")
+            return {
+                "code": -1,
+                "message": f"API 호출 실패: {str(e)}",
+                "success_count": 0,
+                "fail_count": len(slots)
+            }
+
+    @classmethod
+    def request_campaign_status(cls, campaign_codes, use_test=False):
+        """
+        캠페인 상태 조회 API 호출
+
+        Args:
+            campaign_codes: (campaign_type, campaign_code) 튜플 리스트
+            use_test: 테스트 API 사용 여부
+
+        Returns:
+            dict: API 응답 결과
+        """
+        if not cls.PARTNER_KEY:
+            return {
+                "code": -99,
+                "message": "BIZFIT_PARTNER_KEY 환경 변수가 설정되지 않았습니다."
+            }
+
+        campaign_list = []
+        for campaign_type, campaign_code in campaign_codes:
+            campaign_list.append({
+                "campaign_type": campaign_type,
+                "campaign_code": campaign_code
+            })
+
+        payload = {
+            "partner_key": cls.PARTNER_KEY,
+            "campaign_count": len(campaign_list),
+            "campaign_list": campaign_list
+        }
+
+        try:
+            url = cls.get_api_url("request_campaign_status.php", use_test)
+            response = requests.post(
+                url,
+                json=payload,
+                headers={"Content-Type": "application/json"},
+                timeout=30
+            )
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as e:
+            logger.error(f"캠페인 상태 조회 API 호출 실패: {str(e)}")
+            return {
+                "code": -1,
+                "message": f"API 호출 실패: {str(e)}"
+            }
+
+    @classmethod
+    def register_single_slot(cls, slot, class_type=11, use_test=False):
+        """
+        단일 슬롯 캠페인 등록
+
+        Args:
+            slot: ShoppingSlot 또는 PlaceSlot 객체
+            class_type: 상품 등급
+            use_test: 테스트 API 사용 여부
+
+        Returns:
+            tuple: (성공 여부, 캠페인 코드 또는 에러 메시지)
+        """
+        result = cls.register_campaigns([slot], class_type, use_test)
+
+        if result.get("code", -1) > 0 and result.get("success_count", 0) > 0:
+            success_list = result.get("success_list", [])
+            if success_list:
+                return True, success_list[0].get("campaign_code", "")
+
+        fail_message = "등록 실패"
+        fail_list = result.get("fail_list", [])
+        if fail_list:
+            fail_message = fail_list[0].get("fail_message", fail_message)
+        elif result.get("message"):
+            fail_message = result.get("message")
+
+        return False, fail_message
+
+    @classmethod
+    def update_slot_from_api_status(cls, slot, status_data):
+        """
+        API 상태 응답으로 슬롯 정보 업데이트
+
+        Args:
+            slot: ShoppingSlot 또는 PlaceSlot 객체
+            status_data: API 응답의 개별 캠페인 상태 데이터
+        """
+        slot.api_status = status_data.get("status", 0)
+        slot.api_current_count = status_data.get("current_count", 0)
+        slot.daily_target = status_data.get("daily_target", slot.daily_target)
+# ==========================================
+
 
 # Define the database base
 class Base(DeclarativeBase):
